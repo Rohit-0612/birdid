@@ -16,5 +16,131 @@
     "license": "CC BY-SA 3.0",
     "source": "https://commons.wikimedia.org/wiki/File%3ACyanocitta_cristata_-_Blue_Jay_XC81291.mp3",
     "bytes": 422259
+  },
+  {
+    "file": "Northern_Cardinal/Cardinalis_cardinalis_-_Northern_Cardinal_XC77572.mp3",
+    "common_name": "Northern Cardinal",
+    "scientific_name": "Cardinalis cardinalis",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACardinalis_cardinalis_-_Northern_Cardinal_XC77572.mp3",
+    "bytes": 352553
+  },
+  {
+    "file": "Blue_Jay/Cyanocitta_cristata_-_Blue_Jay_XC175223.mp3",
+    "common_name": "Blue Jay",
+    "scientific_name": "Cyanocitta cristata",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACyanocitta_cristata_-_Blue_Jay_XC175223.mp3",
+    "bytes": 310756
+  },
+  {
+    "file": "American_Crow/Corvus_brachyrhynchos_-_American_Crow_XC80525.mp3",
+    "common_name": "American Crow",
+    "scientific_name": "Corvus brachyrhynchos",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACorvus_brachyrhynchos_-_American_Crow_XC80525.mp3",
+    "bytes": 660291
+  },
+  {
+    "file": "American_Crow/Corvus_brachyrhynchos_-_American_Crow_-_XC80525.ogg",
+    "common_name": "American Crow",
+    "scientific_name": "Corvus brachyrhynchos",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACorvus_brachyrhynchos_-_American_Crow_-_XC80525.ogg",
+    "bytes": 379013
+  },
+  {
+    "file": "Barn_Swallow/Hirundo_rustica_-_Barn_Swallow_XC83449.mp3",
+    "common_name": "Barn Swallow",
+    "scientific_name": "Hirundo rustica",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AHirundo_rustica_-_Barn_Swallow_XC83449.mp3",
+    "bytes": 420076
+  },
+  {
+    "file": "Barn_Swallow/Hirundo_rustica_-_Barn_Swallow_XC492101.mp3",
+    "common_name": "Barn Swallow",
+    "scientific_name": "Hirundo rustica",
+    "author": "Marie-Lan Taÿ Pamart",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AHirundo_rustica_-_Barn_Swallow_XC492101.mp3",
+    "bytes": 725066
+  },
+  {
+    "file": "House_Wren/Troglodytes_aedon_-_House_Wren_XC558995.mp3",
+    "common_name": "House Wren",
+    "scientific_name": "Troglodytes aedon",
+    "author": "radrat",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ATroglodytes_aedon_-_House_Wren_XC558995.mp3",
+    "bytes": 663291
+  },
+  {
+    "file": "House_Wren/Troglodytes_musculus_-_Southern_House_Wren,_Panama_XC522951.mp3",
+    "common_name": "House Wren",
+    "scientific_name": "Troglodytes aedon",
+    "author": "Dario Taraborelli",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ATroglodytes_musculus_-_Southern_House_Wren%2C_Panama_XC522951.mp3",
+    "bytes": 59859
+  },
+  {
+    "file": "Song_Sparrow/Melospiza_melodia_-_Song_Sparrow_XC570789.mp3",
+    "common_name": "Song Sparrow",
+    "scientific_name": "Melospiza melodia",
+    "author": "Doug Hynes",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AMelospiza_melodia_-_Song_Sparrow_XC570789.mp3",
+    "bytes": 1495540
+  },
+  {
+    "file": "Song_Sparrow/Melospiza_melodia_-_Song_Sparrow_-_XC75500.ogg",
+    "common_name": "Song Sparrow",
+    "scientific_name": "Melospiza melodia",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AMelospiza_melodia_-_Song_Sparrow_-_XC75500.ogg",
+    "bytes": 349056
+  },
+  {
+    "file": "Red-winged_Blackbird/Agelaius_phoeniceus_-_Red-winged_Blackbird_XC128396.ogg",
+    "common_name": "Red-winged Blackbird",
+    "scientific_name": "Agelaius phoeniceus",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAgelaius_phoeniceus_-_Red-winged_Blackbird_XC128396.ogg",
+    "bytes": 3080802
+  },
+  {
+    "file": "Red-winged_Blackbird/Agelaius_phoeniceus_-_Red-winged_Blackbird_-_XC75497.ogg",
+    "common_name": "Red-winged Blackbird",
+    "scientific_name": "Agelaius phoeniceus",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAgelaius_phoeniceus_-_Red-winged_Blackbird_-_XC75497.ogg",
+    "bytes": 375287
+  },
+  {
+    "file": "Common_Yellowthroat/Geothlypis_trichas_-_Common_Yellowthroat_XC142626.ogg",
+    "common_name": "Common Yellowthroat",
+    "scientific_name": "Geothlypis trichas",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AGeothlypis_trichas_-_Common_Yellowthroat_XC142626.ogg",
+    "bytes": 2969426
+  },
+  {
+    "file": "Common_Yellowthroat/Geothlypis_trichas_-_Common_Yellowthroat_XC105134.mp3",
+    "common_name": "Common Yellowthroat",
+    "scientific_name": "Geothlypis trichas",
+    "author": "Jonathon Jongsma",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AGeothlypis_trichas_-_Common_Yellowthroat_XC105134.mp3",
+    "bytes": 2772969
   }
 ]

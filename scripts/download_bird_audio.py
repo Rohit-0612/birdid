@@ -30,6 +30,7 @@ import re
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,12 +55,29 @@ DEFAULT_SPECIES = {
 AUDIO_EXT = (".mp3", ".ogg", ".oga", ".flac", ".wav")
 
 
+def _get(url, timeout=30, tries=5):
+    """Fetch with exponential backoff. Commons returns 429 readily and the
+    Retry-After header, when present, is authoritative."""
+    delay = 2.0
+    for attempt in range(1, tries + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            return urllib.request.urlopen(req, timeout=timeout).read()
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == tries:
+                raise
+            wait = float(e.headers.get("Retry-After") or delay)
+            print(f"    rate limited, waiting {wait:.0f}s "
+                  f"(attempt {attempt}/{tries})")
+            time.sleep(wait)
+            delay = min(delay * 2, 60)
+    raise RuntimeError("unreachable")
+
+
 def api(**params):
     params.update(action="query", format="json")
     url = API + "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+    return json.loads(_get(url))
 
 
 def strip_html(s):
@@ -94,9 +112,8 @@ def file_info(title):
 
 
 def download(url, dest):
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=90) as r, open(dest, "wb") as f:
-        f.write(r.read())
+    with open(dest, "wb") as f:
+        f.write(_get(url, timeout=90))
     return os.path.getsize(dest)
 
 
@@ -156,7 +173,7 @@ def main() -> int:
                 have.add(rel)
                 added += 1
                 print(f"  saved  {fname}  ({size/1024:.0f} KB, {info['license']}, by {info['author']})")
-                time.sleep(1)          # be polite to Commons
+                time.sleep(4)          # be polite to Commons
             except Exception as e:                               # noqa: BLE001
                 print(f"  failed {title}: {e}")
 

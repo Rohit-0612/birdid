@@ -9,10 +9,15 @@
 *.tar.gz
 CUB_200_2011/
 birds_split/
-# Audio itself is CC-licensed and redistributable, but bulky. Keep the
-# manifest so attribution survives even though the files do not.
+# Downloaded media is CC-licensed and re-fetchable from the manifests, but
+# bulky. Keep the manifests so attribution and the exact file list survive
+# even though the bytes do not.
 bird_audio_samples/*
 !bird_audio_samples/manifest.json
+
+data/openset/*
+!data/openset/manifest.json
+!data/openset/threshold.json
 
 # ── Generated output ─────────────────────────────────────────
 evaluation/

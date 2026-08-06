@@ -1,0 +1,1342 @@
+[
+  {
+    "file": "ood/near_bird/Scarlet_Macaw/960px-Scarlet_macaw_(Ara_macao_cyanopterus)_Copan.jpg",
+    "kind": "ood/near_bird",
+    "label": "Scarlet Macaw",
+    "query": "Scarlet Macaw",
+    "author": "Charles J. Sharp",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AScarlet_macaw_%28Ara_macao_cyanopterus%29_Copan.jpg",
+    "bytes": 224298
+  },
+  {
+    "file": "ood/near_bird/Blue_and_yellow_Macaw/960px-Ara_ararauna_Luc_Viatour.jpg",
+    "kind": "ood/near_bird",
+    "label": "Blue-and-yellow Macaw",
+    "query": "Blue-and-yellow Macaw",
+    "author": "Luc Viatour",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAra_ararauna_Luc_Viatour.jpg",
+    "bytes": 114863
+  },
+  {
+    "file": "ood/near_bird/Eclectus_Parrot/960px-Eclectus_Parrot_(Eclectus_roratus)_-pair.jpg",
+    "kind": "ood/near_bird",
+    "label": "Eclectus Parrot",
+    "query": "Eclectus Parrot",
+    "author": "Shiny Things",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AEclectus_Parrot_%28Eclectus_roratus%29_-pair.jpg",
+    "bytes": 118450
+  },
+  {
+    "file": "ood/near_bird/Grey_Parrot/960px-Psittacus_erithacus_-flying-8a.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Parrot",
+    "query": "Grey Parrot",
+    "author": "Robert01",
+    "license": "CC BY-SA 3.0 de",
+    "source": "https://commons.wikimedia.org/wiki/File%3APsittacus_erithacus_-flying-8a.jpg",
+    "bytes": 197853
+  },
+  {
+    "file": "ood/near_bird/Budgerigar/960px-Budgerigar-male-strzelecki-qld.jpg",
+    "kind": "ood/near_bird",
+    "label": "Budgerigar",
+    "query": "Budgerigar",
+    "author": "Benjamint444",
+    "license": "GFDL 1.2",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABudgerigar-male-strzelecki-qld.jpg",
+    "bytes": 138232
+  },
+  {
+    "file": "ood/near_bird/Cockatiel/960px-Wild_cockatiel_-_panoramio.jpg",
+    "kind": "ood/near_bird",
+    "label": "Cockatiel",
+    "query": "Cockatiel",
+    "author": "Ganatron",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AWild_cockatiel_-_panoramio.jpg",
+    "bytes": 183907
+  },
+  {
+    "file": "ood/near_bird/Rainbow_Lorikeet/960px-Rainbow_Lorikeet_-_AndrewMercer_IMG08212.jpg",
+    "kind": "ood/near_bird",
+    "label": "Rainbow Lorikeet",
+    "query": "Rainbow Lorikeet",
+    "author": "Andrew Mercer (www.baldwhiteguy.co.nz)",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARainbow_Lorikeet_-_AndrewMercer_IMG08212.jpg",
+    "bytes": 108921
+  },
+  {
+    "file": "ood/near_bird/Sulphur_crested_Cockatoo/Cacatua_galerita_Tas_2.jpg",
+    "kind": "ood/near_bird",
+    "label": "Sulphur-crested Cockatoo",
+    "query": "Sulphur-crested Cockatoo",
+    "author": "JJ Harrison (https://www.jjharrison.com.au/)",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACacatua_galerita_Tas_2.jpg",
+    "bytes": 1110504
+  },
+  {
+    "file": "ood/near_bird/Red_tailed_Hawk/960px-Hawk_eating_prey.jpg",
+    "kind": "ood/near_bird",
+    "label": "Red-tailed Hawk",
+    "query": "Red-tailed Hawk",
+    "author": "Steve Jurvetson",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AHawk_eating_prey.jpg",
+    "bytes": 286035
+  },
+  {
+    "file": "ood/near_bird/Bald_Eagle/DavidBaldEagle2003ByPhilKonstantin.jpg",
+    "kind": "ood/near_bird",
+    "label": "Bald Eagle",
+    "query": "Bald Eagle",
+    "author": "Phil Konstantin (philkon)",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ADavidBaldEagle2003ByPhilKonstantin.jpg",
+    "bytes": 41029
+  },
+  {
+    "file": "ood/near_bird/Peregrine_Falcon/960px-Peregrine_Falcon_Nepal.jpg",
+    "kind": "ood/near_bird",
+    "label": "Peregrine Falcon",
+    "query": "Peregrine Falcon",
+    "author": "Creepanta",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APeregrine_Falcon_Nepal.jpg",
+    "bytes": 234827
+  },
+  {
+    "file": "ood/near_bird/Golden_Eagle/960px-Maakotka_(Aquila_chrysaetos)_by_Jarkko_Järvinen_(crop).jpg",
+    "kind": "ood/near_bird",
+    "label": "Golden Eagle",
+    "query": "Golden Eagle",
+    "author": "Jarkko Järvinen",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AMaakotka_%28Aquila_chrysaetos%29_by_Jarkko_J%C3%A4rvinen_%28crop%29.jpg",
+    "bytes": 164638
+  },
+  {
+    "file": "ood/near_bird/Barn_Owl/960px-Tyto_alba_tylluan_wen_detail.jpg",
+    "kind": "ood/near_bird",
+    "label": "Barn Owl",
+    "query": "Barn Owl",
+    "author": "User:Alun Williams333",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ATyto_alba_tylluan_wen_detail.jpg",
+    "bytes": 163426
+  },
+  {
+    "file": "ood/near_bird/Great_Horned_Owl/960px-Bubo_virginianus_-Canada-6.jpg",
+    "kind": "ood/near_bird",
+    "label": "Great Horned Owl",
+    "query": "Great Horned Owl",
+    "author": "brendan.lally",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABubo_virginianus_-Canada-6.jpg",
+    "bytes": 392898
+  },
+  {
+    "file": "ood/near_bird/Snowy_Owl/960px-Bubo_scandiacus_male_Muskegon.jpg",
+    "kind": "ood/near_bird",
+    "label": "Snowy Owl",
+    "query": "Snowy Owl",
+    "author": "Bill Bouton from San Luis Obispo, CA, USA",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABubo_scandiacus_male_Muskegon.jpg",
+    "bytes": 138471
+  },
+  {
+    "file": "ood/near_bird/Emperor_Penguin/960px-Penguin_in_Antarctica_jumping_out_of_the_water.jpg",
+    "kind": "ood/near_bird",
+    "label": "Emperor Penguin",
+    "query": "Emperor Penguin",
+    "author": "Christopher Michel",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APenguin_in_Antarctica_jumping_out_of_the_water.jpg",
+    "bytes": 185324
+  },
+  {
+    "file": "ood/near_bird/African_Penguin/960px-African_penguins.jpg",
+    "kind": "ood/near_bird",
+    "label": "African Penguin",
+    "query": "African Penguin",
+    "author": "User:Salimfadhley",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAfrican_penguins.jpg",
+    "bytes": 413280
+  },
+  {
+    "file": "ood/near_bird/Wood_Duck/960px-Wood_duck_druid_ridge_cemetery_10.10.20_DSC_6035.jpg",
+    "kind": "ood/near_bird",
+    "label": "Wood Duck",
+    "query": "Wood Duck",
+    "author": "lwolfartist",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AWood_duck_druid_ridge_cemetery_10.10.20_DSC_6035.jpg",
+    "bytes": 95202
+  },
+  {
+    "file": "ood/near_bird/Canada_Goose/960px-Bernache_du_Canada,_à_l'Île_Paton_(2).jpg",
+    "kind": "ood/near_bird",
+    "label": "Canada Goose",
+    "query": "Canada Goose",
+    "author": "Laurent Bélanger",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABernache_du_Canada%2C_%C3%A0_l%27%C3%8Ele_Paton_%282%29.jpg",
+    "bytes": 252052
+  },
+  {
+    "file": "ood/near_bird/Mute_Swan/960px-Mute_Swan_Emsworth2.JPG",
+    "kind": "ood/near_bird",
+    "label": "Mute Swan",
+    "query": "Mute Swan",
+    "author": "Geni",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AMute_Swan_Emsworth2.JPG",
+    "bytes": 147743
+  },
+  {
+    "file": "ood/near_bird/Greater_Flamingo/960px-009_Greater_flamingos_male_and_female_in_the_Camargue_during_mating_season_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Greater Flamingo",
+    "query": "Greater Flamingo",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A009_Greater_flamingos_male_and_female_in_the_Camargue_during_mating_season_Photo_by_Giles_Laurent.jpg",
+    "bytes": 110295
+  },
+  {
+    "file": "ood/near_bird/Indian_Peafowl/960px-Indian_peafowls_1.jpg",
+    "kind": "ood/near_bird",
+    "label": "Indian Peafowl",
+    "query": "Indian Peafowl",
+    "author": "Jameela P.",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AIndian_peafowls_1.jpg",
+    "bytes": 153356
+  },
+  {
+    "file": "ood/near_bird/Common_Ostrich/960px-Struthio_camelus_portrait_Whipsnade_Zoo.jpg",
+    "kind": "ood/near_bird",
+    "label": "Common Ostrich",
+    "query": "Common Ostrich",
+    "author": "William Warby",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AStruthio_camelus_portrait_Whipsnade_Zoo.jpg",
+    "bytes": 188677
+  },
+  {
+    "file": "ood/near_bird/Toco_Toucan/960px-Toco_Toucan_(Ramphastos_toco)_-_48153967707.jpg",
+    "kind": "ood/near_bird",
+    "label": "Toco Toucan",
+    "query": "Toco Toucan",
+    "author": "Bernard DUPONT",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AToco_Toucan_%28Ramphastos_toco%29_-_48153967707.jpg",
+    "bytes": 84385
+  },
+  {
+    "file": "ood/near_bird/Southern_Ground_Hornbill/960px-Bucorvus_leadbeateri_(Mfuwe).jpg",
+    "kind": "ood/near_bird",
+    "label": "Southern Ground Hornbill",
+    "query": "Southern Ground Hornbill",
+    "author": "Hans Hillewaert",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABucorvus_leadbeateri_%28Mfuwe%29.jpg",
+    "bytes": 208674
+  },
+  {
+    "file": "ood/near_bird/Grey_Crowned_Crane/960px-Balearica_regulorum_1_Luc_Viatour.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Crowned Crane",
+    "query": "Grey Crowned Crane",
+    "author": "Luc Viatour",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABalearica_regulorum_1_Luc_Viatour.jpg",
+    "bytes": 173766
+  },
+  {
+    "file": "ood/animal/Golden_Retriever/Golden_Retriever_Dukedestiny01_drvd.jpg",
+    "kind": "ood/animal",
+    "label": "Golden Retriever",
+    "query": "Golden Retriever",
+    "author": "Dukedestiny01.jpg: \"Janneke Vreugdenhil\"\nderivative work: Anka Friedrich ([[User talk:Ankaaswe\nTrix Friedrich|talk]])",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File%3AGolden_Retriever_Dukedestiny01_drvd.jpg",
+    "bytes": 165000
+  },
+  {
+    "file": "ood/animal/Domestic_cat/960px-Abessinierkatze_Tilia_04.jpg",
+    "kind": "ood/animal",
+    "label": "Domestic cat",
+    "query": "Domestic cat",
+    "author": "Burkhard Mücke",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAbessinierkatze_Tilia_04.jpg",
+    "bytes": 194270
+  },
+  {
+    "file": "ood/animal/Eastern_gray_squirrel/960px-Eastern_Gray_Squirrel_Nbg_(259761637).jpeg",
+    "kind": "ood/animal",
+    "label": "Eastern gray squirrel",
+    "query": "Eastern gray squirrel",
+    "author": "Randy Everette",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AEastern_Gray_Squirrel_Nbg_%28259761637%29.jpeg",
+    "bytes": 343641
+  },
+  {
+    "file": "ood/animal/Red_fox/960px-Red_Fox_Portrait.png",
+    "kind": "ood/animal",
+    "label": "Red fox",
+    "query": "Red fox",
+    "author": "Chuck Homler, Focus On Wildlife",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARed_Fox_Portrait.png",
+    "bytes": 722271
+  },
+  {
+    "file": "ood/near_bird/Scarlet_Macaw/960px-Ara_macao_-Puntarenas_Province,_Costa_Rica-8.jpg",
+    "kind": "ood/near_bird",
+    "label": "Scarlet Macaw",
+    "query": "Scarlet Macaw",
+    "author": "chuck624 from Upstate NY, USA",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAra_macao_-Puntarenas_Province%2C_Costa_Rica-8.jpg",
+    "bytes": 193414
+  },
+  {
+    "file": "ood/near_bird/Scarlet_Macaw/960px-Scarlet_Macaws_at_Uvita_Beach,_Costa_Rica_03.jpg",
+    "kind": "ood/near_bird",
+    "label": "Scarlet Macaw",
+    "query": "Scarlet Macaw",
+    "author": "Satdeep Gill",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AScarlet_Macaws_at_Uvita_Beach%2C_Costa_Rica_03.jpg",
+    "bytes": 178265
+  },
+  {
+    "file": "ood/near_bird/Scarlet_Macaw/960px-Scarlet_Macaws_at_Uvita_Beach,_Costa_Rica_01.jpg",
+    "kind": "ood/near_bird",
+    "label": "Scarlet Macaw",
+    "query": "Scarlet Macaw",
+    "author": "Satdeep Gill",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AScarlet_Macaws_at_Uvita_Beach%2C_Costa_Rica_01.jpg",
+    "bytes": 200087
+  },
+  {
+    "file": "ood/near_bird/Scarlet_Macaw/960px-Scarlet_Macaws_at_Uvita_Beach,_Costa_Rica_02.jpg",
+    "kind": "ood/near_bird",
+    "label": "Scarlet Macaw",
+    "query": "Scarlet Macaw",
+    "author": "Satdeep Gill",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AScarlet_Macaws_at_Uvita_Beach%2C_Costa_Rica_02.jpg",
+    "bytes": 129108
+  },
+  {
+    "file": "ood/near_bird/Blue_and_yellow_Macaw/960px-Ara_ararauna_qtl3.jpg",
+    "kind": "ood/near_bird",
+    "label": "Blue-and-yellow Macaw",
+    "query": "Blue-and-yellow Macaw",
+    "author": "Quartl",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAra_ararauna_qtl3.jpg",
+    "bytes": 207704
+  },
+  {
+    "file": "ood/near_bird/Blue_and_yellow_Macaw/Blue-and-Yellow-Macaw.jpg",
+    "kind": "ood/near_bird",
+    "label": "Blue-and-yellow Macaw",
+    "query": "Blue-and-yellow Macaw",
+    "author": "Benjamint444",
+    "license": "GFDL 1.2",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABlue-and-Yellow-Macaw.jpg",
+    "bytes": 1285183
+  },
+  {
+    "file": "ood/near_bird/Blue_and_yellow_Macaw/960px-Ara_ararauna_MHNT.ZOO.2010.11.148.34.jpg",
+    "kind": "ood/near_bird",
+    "label": "Blue-and-yellow Macaw",
+    "query": "Blue-and-yellow Macaw",
+    "author": "Roger Culos",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAra_ararauna_MHNT.ZOO.2010.11.148.34.jpg",
+    "bytes": 44647
+  },
+  {
+    "file": "ood/near_bird/Blue_and_yellow_Macaw/960px-Ara_ararauna_(Costa_Rica).jpg",
+    "kind": "ood/near_bird",
+    "label": "Blue-and-yellow Macaw",
+    "query": "Blue-and-yellow Macaw",
+    "author": "Hans Hillewaert",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAra_ararauna_%28Costa_Rica%29.jpg",
+    "bytes": 298155
+  },
+  {
+    "file": "ood/near_bird/Eclectus_Parrot/960px-EclectusParrot01.jpg",
+    "kind": "ood/near_bird",
+    "label": "Eclectus Parrot",
+    "query": "Eclectus Parrot",
+    "author": "Dimitrijemat",
+    "license": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AEclectusParrot01.jpg",
+    "bytes": 154903
+  },
+  {
+    "file": "ood/near_bird/Eclectus_Parrot/960px-Male_Eclectus.png",
+    "kind": "ood/near_bird",
+    "label": "Eclectus Parrot",
+    "query": "Eclectus Parrot",
+    "author": "B-b-bheeshma",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AMale_Eclectus.png",
+    "bytes": 828824
+  },
+  {
+    "file": "ood/near_bird/Eclectus_Parrot/960px-Female_Papuan_Eclectus_Parrot.jpg",
+    "kind": "ood/near_bird",
+    "label": "Eclectus Parrot",
+    "query": "Eclectus Parrot",
+    "author": "Gromithead",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AFemale_Papuan_Eclectus_Parrot.jpg",
+    "bytes": 277586
+  },
+  {
+    "file": "ood/near_bird/Eclectus_Parrot/960px-Eclectus_roratus_-_Maroparque_01.jpg",
+    "kind": "ood/near_bird",
+    "label": "Eclectus Parrot",
+    "query": "Eclectus Parrot",
+    "author": "H. Zell",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AEclectus_roratus_-_Maroparque_01.jpg",
+    "bytes": 239617
+  },
+  {
+    "file": "ood/near_bird/Grey_Parrot/960px-Perroquet_à_Yampopo_Beach_-_Douala.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Parrot",
+    "query": "Grey Parrot",
+    "author": "Florettesokeng",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APerroquet_%C3%A0_Yampopo_Beach_-_Douala.jpg",
+    "bytes": 145894
+  },
+  {
+    "file": "ood/near_bird/Grey_Parrot/960px-Psittacus_erithacus_107150604.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Parrot",
+    "query": "Grey Parrot",
+    "author": "Lucy Keith-Diagne",
+    "license": "CC BY 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APsittacus_erithacus_107150604.jpg",
+    "bytes": 169339
+  },
+  {
+    "file": "ood/near_bird/Grey_Parrot/960px-Psittacus_erithacus_MHNT.ZOO.2010.11.148.1.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Parrot",
+    "query": "Grey Parrot",
+    "author": "Roger Culos",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APsittacus_erithacus_MHNT.ZOO.2010.11.148.1.jpg",
+    "bytes": 36207
+  },
+  {
+    "file": "ood/near_bird/Grey_Parrot/960px-Perroquet_Gris_du_Gabon.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Parrot",
+    "query": "Grey Parrot",
+    "author": "CacTux",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APerroquet_Gris_du_Gabon.jpg",
+    "bytes": 184494
+  },
+  {
+    "file": "ood/near_bird/Budgerigar/960px-Budgerigar-strzelecki-qld.jpg",
+    "kind": "ood/near_bird",
+    "label": "Budgerigar",
+    "query": "Budgerigar",
+    "author": "Benjamint444",
+    "license": "GFDL 1.2",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABudgerigar-strzelecki-qld.jpg",
+    "bytes": 139454
+  },
+  {
+    "file": "ood/near_bird/Budgerigar/960px-Budgerigar-_Mount_Hope.jpg",
+    "kind": "ood/near_bird",
+    "label": "Budgerigar",
+    "query": "Budgerigar",
+    "author": "JJ Harrison",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABudgerigar-_Mount_Hope.jpg",
+    "bytes": 261412
+  },
+  {
+    "file": "ood/near_bird/Budgerigar/960px-Budgerigar_1_(20123571788).jpg",
+    "kind": "ood/near_bird",
+    "label": "Budgerigar",
+    "query": "Budgerigar",
+    "author": "Jim  Bendon from Karratha, Australia",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABudgerigar_1_%2820123571788%29.jpg",
+    "bytes": 109521
+  },
+  {
+    "file": "ood/near_bird/Budgerigar/960px-Trichoglossus_haematodus_deplanchii_-_Karlsruhe_Zoo_01.jpg",
+    "kind": "ood/near_bird",
+    "label": "Budgerigar",
+    "query": "Budgerigar",
+    "author": "H. Zell",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ATrichoglossus_haematodus_deplanchii_-_Karlsruhe_Zoo_01.jpg",
+    "bytes": 168183
+  },
+  {
+    "file": "ood/near_bird/Cockatiel/960px-Cockateil.jpg",
+    "kind": "ood/near_bird",
+    "label": "Cockatiel",
+    "query": "Cockatiel",
+    "author": "Jim  Bendon",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACockateil.jpg",
+    "bytes": 115013
+  },
+  {
+    "file": "ood/near_bird/Cockatiel/960px-Cockatiel_2.jpg",
+    "kind": "ood/near_bird",
+    "label": "Cockatiel",
+    "query": "Cockatiel",
+    "author": "Jim  Bendon from Karratha, Australia",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACockatiel_2.jpg",
+    "bytes": 65405
+  },
+  {
+    "file": "ood/near_bird/Cockatiel/960px-Nymphicus_hollandicus_MHNT.ZOO.2010.11.148.28.jpg",
+    "kind": "ood/near_bird",
+    "label": "Cockatiel",
+    "query": "Cockatiel",
+    "author": "Roger Culos",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ANymphicus_hollandicus_MHNT.ZOO.2010.11.148.28.jpg",
+    "bytes": 33629
+  },
+  {
+    "file": "ood/near_bird/Cockatiel/960px-Cockatiel_Diamantina_Developmental_Road_Boulia_Central_Western_Queensland_P1080652.jpg",
+    "kind": "ood/near_bird",
+    "label": "Cockatiel",
+    "query": "Cockatiel",
+    "author": "John Robert McPherson",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACockatiel_Diamantina_Developmental_Road_Boulia_Central_Western_Queensland_P1080652.jpg",
+    "bytes": 257850
+  },
+  {
+    "file": "ood/near_bird/Rainbow_Lorikeet/960px-Rainbow_lorikeet_(Trichoglossus_moluccanus)_sitting_in_a_hole_in_a_dead_tree_along_the_Swan_River,_October_2023_02.jpg",
+    "kind": "ood/near_bird",
+    "label": "Rainbow Lorikeet",
+    "query": "Rainbow Lorikeet",
+    "author": "Calistemon",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARainbow_lorikeet_%28Trichoglossus_moluccanus%29_sitting_in_a_hole_in_a_dead_tree_along_the_Swan_River%2C_October_2023_02.jpg",
+    "bytes": 150105
+  },
+  {
+    "file": "ood/near_bird/Rainbow_Lorikeet/960px-Rainbow_Lorikeet,_Bramble_Bay,_Queensland_(328617162).jpg",
+    "kind": "ood/near_bird",
+    "label": "Rainbow Lorikeet",
+    "query": "Rainbow Lorikeet",
+    "author": "Sheba_Also 43,000 photos",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARainbow_Lorikeet%2C_Bramble_Bay%2C_Queensland_%28328617162%29.jpg",
+    "bytes": 390588
+  },
+  {
+    "file": "ood/near_bird/Rainbow_Lorikeet/960px-Rainbow_lorikeet_(Trichoglossus_moluccanus)_sitting_in_a_hole_in_a_dead_tree_along_the_Swan_River,_October_2023_01.jpg",
+    "kind": "ood/near_bird",
+    "label": "Rainbow Lorikeet",
+    "query": "Rainbow Lorikeet",
+    "author": "Calistemon",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARainbow_lorikeet_%28Trichoglossus_moluccanus%29_sitting_in_a_hole_in_a_dead_tree_along_the_Swan_River%2C_October_2023_01.jpg",
+    "bytes": 144591
+  },
+  {
+    "file": "ood/near_bird/Rainbow_Lorikeet/960px-Xanthostemon-chrysanthus-SF24020-04.jpg",
+    "kind": "ood/near_bird",
+    "label": "Rainbow Lorikeet",
+    "query": "Rainbow Lorikeet",
+    "author": "Steve Fitzgerald",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AXanthostemon-chrysanthus-SF24020-04.jpg",
+    "bytes": 235916
+  },
+  {
+    "file": "ood/near_bird/Sulphur_crested_Cockatoo/960px-Sulphur_Crested_Cockatoo.jpg",
+    "kind": "ood/near_bird",
+    "label": "Sulphur-crested Cockatoo",
+    "query": "Sulphur-crested Cockatoo",
+    "author": "Ffyfejam",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASulphur_Crested_Cockatoo.jpg",
+    "bytes": 102381
+  },
+  {
+    "file": "ood/near_bird/Sulphur_crested_Cockatoo/960px-Sulphur-crested_Cockatoo_-_AndrewMercer_-_DSC20087.jpg",
+    "kind": "ood/near_bird",
+    "label": "Sulphur-crested Cockatoo",
+    "query": "Sulphur-crested Cockatoo",
+    "author": "Andrew Mercer (www.baldwhiteguy.co.nz)",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASulphur-crested_Cockatoo_-_AndrewMercer_-_DSC20087.jpg",
+    "bytes": 183629
+  },
+  {
+    "file": "ood/near_bird/Sulphur_crested_Cockatoo/Cacatua_galerita_Tas_1.jpg",
+    "kind": "ood/near_bird",
+    "label": "Sulphur-crested Cockatoo",
+    "query": "Sulphur-crested Cockatoo",
+    "author": "JJ Harrison (https://www.jjharrison.com.au/)",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACacatua_galerita_Tas_1.jpg",
+    "bytes": 565430
+  },
+  {
+    "file": "ood/near_bird/Sulphur_crested_Cockatoo/960px-Sulphur-Crested_Cockatoo.jpg",
+    "kind": "ood/near_bird",
+    "label": "Sulphur-crested Cockatoo",
+    "query": "Sulphur-crested Cockatoo",
+    "author": "Dimitrije Matovic",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASulphur-Crested_Cockatoo.jpg",
+    "bytes": 53328
+  },
+  {
+    "file": "ood/near_bird/Red_tailed_Hawk/960px-Red-tailed_hawk_(44371).jpg",
+    "kind": "ood/near_bird",
+    "label": "Red-tailed Hawk",
+    "query": "Red-tailed Hawk",
+    "author": "Rhododendrites",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARed-tailed_hawk_%2844371%29.jpg",
+    "bytes": 196860
+  },
+  {
+    "file": "ood/near_bird/Red_tailed_Hawk/960px-Red-tailed_Hawk_eating_a_squirrel_(15919213342).jpg",
+    "kind": "ood/near_bird",
+    "label": "Red-tailed Hawk",
+    "query": "Red-tailed Hawk",
+    "author": "Andy Reago &amp; Chrissy McClarren",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARed-tailed_Hawk_eating_a_squirrel_%2815919213342%29.jpg",
+    "bytes": 154702
+  },
+  {
+    "file": "ood/near_bird/Red_tailed_Hawk/960px-Red-tailed_hawk_(23114).jpg",
+    "kind": "ood/near_bird",
+    "label": "Red-tailed Hawk",
+    "query": "Red-tailed Hawk",
+    "author": "Rhododendrites",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARed-tailed_hawk_%2823114%29.jpg",
+    "bytes": 147119
+  },
+  {
+    "file": "ood/near_bird/Red_tailed_Hawk/960px-Red-tailed_hawk_on_power_pole-2033.jpg",
+    "kind": "ood/near_bird",
+    "label": "Red-tailed Hawk",
+    "query": "Red-tailed Hawk",
+    "author": "Frank Schulenburg",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARed-tailed_hawk_on_power_pole-2033.jpg",
+    "bytes": 97478
+  },
+  {
+    "file": "ood/near_bird/Bald_Eagle/960px-Bald_Eagle_(Haliaeetus_leucocephalus)_Kachemak_Bay,_Alaska.jpg",
+    "kind": "ood/near_bird",
+    "label": "Bald Eagle",
+    "query": "Bald Eagle",
+    "author": "Andy  Morffew from Itchen Abbas, Hampshire, UK",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABald_Eagle_%28Haliaeetus_leucocephalus%29_Kachemak_Bay%2C_Alaska.jpg",
+    "bytes": 189460
+  },
+  {
+    "file": "ood/near_bird/Bald_Eagle/960px-Weisskopf_Seeadler_haliaeetus_leucocephalus_8_amk.jpg",
+    "kind": "ood/near_bird",
+    "label": "Bald Eagle",
+    "query": "Bald Eagle",
+    "author": "AngMoKio",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AWeisskopf_Seeadler_haliaeetus_leucocephalus_8_amk.jpg",
+    "bytes": 163182
+  },
+  {
+    "file": "ood/near_bird/Bald_Eagle/960px-Bald_Eagle_Head_sq.jpg",
+    "kind": "ood/near_bird",
+    "label": "Bald Eagle",
+    "query": "Bald Eagle",
+    "author": "Martin Falbisoner",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABald_Eagle_Head_sq.jpg",
+    "bytes": 136088
+  },
+  {
+    "file": "ood/near_bird/Bald_Eagle/960px-Bald_Eagle_-_\"Helga\"_-_Haliaeetus_leucocephalus2.jpg",
+    "kind": "ood/near_bird",
+    "label": "Bald Eagle",
+    "query": "Bald Eagle",
+    "author": "Paul Friel",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABald_Eagle_-_%22Helga%22_-_Haliaeetus_leucocephalus2.jpg",
+    "bytes": 209375
+  },
+  {
+    "file": "ood/near_bird/Peregrine_Falcon/960px-American_Peregrine_Falcon_(Falco_peregrinus)_(10700651733).jpg",
+    "kind": "ood/near_bird",
+    "label": "Peregrine Falcon",
+    "query": "Peregrine Falcon",
+    "author": "Gregory \"Slobirdr\" Smith",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAmerican_Peregrine_Falcon_%28Falco_peregrinus%29_%2810700651733%29.jpg",
+    "bytes": 135540
+  },
+  {
+    "file": "ood/near_bird/Peregrine_Falcon/960px-Falco_peregrinus_minor,_Cape_Town,_South_Africa_118534019.jpg",
+    "kind": "ood/near_bird",
+    "label": "Peregrine Falcon",
+    "query": "Peregrine Falcon",
+    "author": "Timothy Whitehead",
+    "license": "CC BY 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AFalco_peregrinus_minor%2C_Cape_Town%2C_South_Africa_118534019.jpg",
+    "bytes": 165487
+  },
+  {
+    "file": "ood/near_bird/Peregrine_Falcon/960px-Faucon_pelerin_7_mai.jpg",
+    "kind": "ood/near_bird",
+    "label": "Peregrine Falcon",
+    "query": "Peregrine Falcon",
+    "author": "Georges Lignier (georges.lignier@wanadoo.fr)",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AFaucon_pelerin_7_mai.jpg",
+    "bytes": 236413
+  },
+  {
+    "file": "ood/near_bird/Peregrine_Falcon/960px-Peregrine_Falcon_Kobble_Apr07.JPG",
+    "kind": "ood/near_bird",
+    "label": "Peregrine Falcon",
+    "query": "Peregrine Falcon",
+    "author": "Aviceda",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APeregrine_Falcon_Kobble_Apr07.JPG",
+    "bytes": 197237
+  },
+  {
+    "file": "ood/near_bird/Golden_Eagle/960px-015_Wild_Golden_Eagle_in_flight_at_Pfyn-Finges_(Switzerland)_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Golden Eagle",
+    "query": "Golden Eagle",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A015_Wild_Golden_Eagle_in_flight_at_Pfyn-Finges_%28Switzerland%29_Photo_by_Giles_Laurent.jpg",
+    "bytes": 164281
+  },
+  {
+    "file": "ood/near_bird/Golden_Eagle/960px-001_Wild_Golden_Eagle_and_Majinghorn_Pfyn-Finges_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Golden Eagle",
+    "query": "Golden Eagle",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A001_Wild_Golden_Eagle_and_Majinghorn_Pfyn-Finges_Photo_by_Giles_Laurent.jpg",
+    "bytes": 51341
+  },
+  {
+    "file": "ood/near_bird/Golden_Eagle/960px-016_Wild_Golden_Eagle_in_flight_at_Pfyn-Finges_(Switzerland)_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Golden Eagle",
+    "query": "Golden Eagle",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A016_Wild_Golden_Eagle_in_flight_at_Pfyn-Finges_%28Switzerland%29_Photo_by_Giles_Laurent.jpg",
+    "bytes": 74139
+  },
+  {
+    "file": "ood/near_bird/Golden_Eagle/960px-Chrysaetos_La_Cañada_20120114_1.jpg",
+    "kind": "ood/near_bird",
+    "label": "Golden Eagle",
+    "query": "Golden Eagle",
+    "author": "Juan lacruz",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AChrysaetos_La_Ca%C3%B1ada_20120114_1.jpg",
+    "bytes": 75740
+  },
+  {
+    "file": "ood/near_bird/Barn_Owl/960px-Kerkuil_André.JPG",
+    "kind": "ood/near_bird",
+    "label": "Barn Owl",
+    "query": "Barn Owl",
+    "author": "André Eijkenaar",
+    "license": "CC BY 3.0 nl",
+    "source": "https://commons.wikimedia.org/wiki/File%3AKerkuil_Andr%C3%A9.JPG",
+    "bytes": 212632
+  },
+  {
+    "file": "ood/near_bird/Barn_Owl/960px-Tyto_alba_(Scopoli,_1769).jpg",
+    "kind": "ood/near_bird",
+    "label": "Barn Owl",
+    "query": "Barn Owl",
+    "author": "Michael Gäbler",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ATyto_alba_%28Scopoli%2C_1769%29.jpg",
+    "bytes": 231855
+  },
+  {
+    "file": "ood/near_bird/Barn_Owl/960px-Tyto_alba_tylluan_wen.jpg",
+    "kind": "ood/near_bird",
+    "label": "Barn Owl",
+    "query": "Barn Owl",
+    "author": "Alun Williams333",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ATyto_alba_tylluan_wen.jpg",
+    "bytes": 130311
+  },
+  {
+    "file": "ood/near_bird/Barn_Owl/960px-Barn_Owl_R1_2178.jpg",
+    "kind": "ood/near_bird",
+    "label": "Barn Owl",
+    "query": "Barn Owl",
+    "author": "Quejaytee",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABarn_Owl_R1_2178.jpg",
+    "bytes": 104182
+  },
+  {
+    "file": "ood/near_bird/Great_Horned_Owl/960px-004_Great_horned_owl_under_a_Pink_Ipê_tree_in_Encontro_das_Águas_State_Park_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Great Horned Owl",
+    "query": "Great Horned Owl",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A004_Great_horned_owl_under_a_Pink_Ip%C3%AA_tree_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg",
+    "bytes": 253555
+  },
+  {
+    "file": "ood/near_bird/Great_Horned_Owl/960px-Bubo_bubo_sibiricus_-_01.JPG",
+    "kind": "ood/near_bird",
+    "label": "Great Horned Owl",
+    "query": "Great Horned Owl",
+    "author": "Carlos Delgado",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABubo_bubo_sibiricus_-_01.JPG",
+    "bytes": 261850
+  },
+  {
+    "file": "ood/near_bird/Great_Horned_Owl/960px-Bubo_virginianus1.jpg",
+    "kind": "ood/near_bird",
+    "label": "Great Horned Owl",
+    "query": "Great Horned Owl",
+    "author": "Raul654",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABubo_virginianus1.jpg",
+    "bytes": 368787
+  },
+  {
+    "file": "ood/near_bird/Great_Horned_Owl/960px-Great_Horned_Owl_in_Winter.jpg",
+    "kind": "ood/near_bird",
+    "label": "Great Horned Owl",
+    "query": "Great Horned Owl",
+    "author": "Billy Hunt",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AGreat_Horned_Owl_in_Winter.jpg",
+    "bytes": 249613
+  },
+  {
+    "file": "ood/near_bird/Snowy_Owl/960px-Snowy_owl_(Bubo_scandiacus),_Vlieland,_Netherlands.jpg",
+    "kind": "ood/near_bird",
+    "label": "Snowy Owl",
+    "query": "Snowy Owl",
+    "author": "Frank Vassen",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASnowy_owl_%28Bubo_scandiacus%29%2C_Vlieland%2C_Netherlands.jpg",
+    "bytes": 102859
+  },
+  {
+    "file": "ood/near_bird/Snowy_Owl/960px-Búho_nival_(Bubo_scandiacus),_Arcos_de_la_Frontera,_Cádiz,_España,_2015-12-08,_DD_03.JPG",
+    "kind": "ood/near_bird",
+    "label": "Snowy Owl",
+    "query": "Snowy Owl",
+    "author": "Diego Delso",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AB%C3%BAho_nival_%28Bubo_scandiacus%29%2C_Arcos_de_la_Frontera%2C_C%C3%A1diz%2C_Espa%C3%B1a%2C_2015-12-08%2C_DD_03.JPG",
+    "bytes": 91094
+  },
+  {
+    "file": "ood/near_bird/Snowy_Owl/960px-Bubo_scandiacus_-_Karlsruhe_Zoo_01.jpg",
+    "kind": "ood/near_bird",
+    "label": "Snowy Owl",
+    "query": "Snowy Owl",
+    "author": "H. Zell",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABubo_scandiacus_-_Karlsruhe_Zoo_01.jpg",
+    "bytes": 136566
+  },
+  {
+    "file": "ood/near_bird/Snowy_Owl/960px-Snowy_owl_at_Jones_Beach_(04863).jpg",
+    "kind": "ood/near_bird",
+    "label": "Snowy Owl",
+    "query": "Snowy Owl",
+    "author": "Rhododendrites",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASnowy_owl_at_Jones_Beach_%2804863%29.jpg",
+    "bytes": 144705
+  },
+  {
+    "file": "ood/near_bird/Emperor_Penguin/Aptenodytes_forsteri_-Snow_Hill_Island,_Antarctica_-adults_and_juvenile-8.jpg",
+    "kind": "ood/near_bird",
+    "label": "Emperor Penguin",
+    "query": "Emperor Penguin",
+    "author": "Ian Duffy from UK",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAptenodytes_forsteri_-Snow_Hill_Island%2C_Antarctica_-adults_and_juvenile-8.jpg",
+    "bytes": 986938
+  },
+  {
+    "file": "ood/near_bird/Emperor_Penguin/960px-Penguin-lifecycle-ar.jpg",
+    "kind": "ood/near_bird",
+    "label": "Emperor Penguin",
+    "query": "Emperor Penguin",
+    "author": "Original: Zina Deretsky, National Science Foundation\nDerivative: باسم",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File%3APenguin-lifecycle-ar.jpg",
+    "bytes": 188901
+  },
+  {
+    "file": "ood/near_bird/Emperor_Penguin/960px-2007_Snow-Hill-Island_Luyten-De-Hauwere-Emperor-Penguin-84.jpg",
+    "kind": "ood/near_bird",
+    "label": "Emperor Penguin",
+    "query": "Emperor Penguin",
+    "author": "Denis Luyten",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File%3A2007_Snow-Hill-Island_Luyten-De-Hauwere-Emperor-Penguin-84.jpg",
+    "bytes": 177323
+  },
+  {
+    "file": "ood/near_bird/Emperor_Penguin/960px-2007_Snow-Hill-Island_Luyten-De-Hauwere-Emperor-Penguin-104.jpg",
+    "kind": "ood/near_bird",
+    "label": "Emperor Penguin",
+    "query": "Emperor Penguin",
+    "author": "Denis Luyten",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File%3A2007_Snow-Hill-Island_Luyten-De-Hauwere-Emperor-Penguin-104.jpg",
+    "bytes": 372092
+  },
+  {
+    "file": "ood/near_bird/African_Penguin/960px-Sander-pinguins.jpg",
+    "kind": "ood/near_bird",
+    "label": "African Penguin",
+    "query": "African Penguin",
+    "author": "Sander Spek",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASander-pinguins.jpg",
+    "bytes": 182157
+  },
+  {
+    "file": "ood/near_bird/African_Penguin/960px-Pingüino_de_El_Cabo_(Spheniscus_demersus),_Playa_de_Boulders,_Simon's_Town,_Sudáfrica,_2018-07-23,_DD_11.jpg",
+    "kind": "ood/near_bird",
+    "label": "African Penguin",
+    "query": "African Penguin",
+    "author": "Diego Delso",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APing%C3%BCino_de_El_Cabo_%28Spheniscus_demersus%29%2C_Playa_de_Boulders%2C_Simon%27s_Town%2C_Sud%C3%A1frica%2C_2018-07-23%2C_DD_11.jpg",
+    "bytes": 309121
+  },
+  {
+    "file": "ood/near_bird/African_Penguin/960px-African_penguins_mating.jpg",
+    "kind": "ood/near_bird",
+    "label": "African Penguin",
+    "query": "African Penguin",
+    "author": "Votpuske",
+    "license": "CC BY 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAfrican_penguins_mating.jpg",
+    "bytes": 164342
+  },
+  {
+    "file": "ood/near_bird/African_Penguin/960px-Spheniscus_demersus_MHNT.ZOO.2010.11.43.13.jpg",
+    "kind": "ood/near_bird",
+    "label": "African Penguin",
+    "query": "African Penguin",
+    "author": "Roger Culos",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASpheniscus_demersus_MHNT.ZOO.2010.11.43.13.jpg",
+    "bytes": 154421
+  },
+  {
+    "file": "ood/near_bird/Wood_Duck/960px-Wood_duck_druid_ridge_cemetery_10.10.20_DSC_5487.jpg",
+    "kind": "ood/near_bird",
+    "label": "Wood Duck",
+    "query": "Wood Duck",
+    "author": "lwolfartist",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AWood_duck_druid_ridge_cemetery_10.10.20_DSC_5487.jpg",
+    "bytes": 136482
+  },
+  {
+    "file": "ood/near_bird/Wood_Duck/960px-Male_Aix_sponsa_portrait.jpg",
+    "kind": "ood/near_bird",
+    "label": "Wood Duck",
+    "query": "Wood Duck",
+    "author": "Francis C. Franklin",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AMale_Aix_sponsa_portrait.jpg",
+    "bytes": 126017
+  },
+  {
+    "file": "ood/near_bird/Wood_Duck/960px-Aix_sponsa_MHNT.ZOO.2010.11.27.4.jpg",
+    "kind": "ood/near_bird",
+    "label": "Wood Duck",
+    "query": "Wood Duck",
+    "author": "Roger Culos",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAix_sponsa_MHNT.ZOO.2010.11.27.4.jpg",
+    "bytes": 56086
+  },
+  {
+    "file": "ood/near_bird/Wood_Duck/960px-Female_wood_duck_and_ducklings.jpg",
+    "kind": "ood/near_bird",
+    "label": "Wood Duck",
+    "query": "Wood Duck",
+    "author": "Grungaloo",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AFemale_wood_duck_and_ducklings.jpg",
+    "bytes": 245264
+  },
+  {
+    "file": "ood/near_bird/Canada_Goose/960px-Bernaches_du_Canada_02.jpg",
+    "kind": "ood/near_bird",
+    "label": "Canada Goose",
+    "query": "Canada Goose",
+    "author": "Pierre5018",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABernaches_du_Canada_02.jpg",
+    "bytes": 438325
+  },
+  {
+    "file": "ood/near_bird/Canada_Goose/960px-Canadagoose.jpg",
+    "kind": "ood/near_bird",
+    "label": "Canada Goose",
+    "query": "Canada Goose",
+    "author": "Karrackoo",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACanadagoose.jpg",
+    "bytes": 245334
+  },
+  {
+    "file": "ood/near_bird/Canada_Goose/960px-Dülmen,_Kirchspiel,_Börnste,_Felder_und_Bäume_--_2017_--_3238.jpg",
+    "kind": "ood/near_bird",
+    "label": "Canada Goose",
+    "query": "Canada Goose",
+    "author": "Dietmar Rabich",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AD%C3%BClmen%2C_Kirchspiel%2C_B%C3%B6rnste%2C_Felder_und_B%C3%A4ume_--_2017_--_3238.jpg",
+    "bytes": 104042
+  },
+  {
+    "file": "ood/near_bird/Canada_Goose/960px-Canada_Geese_-_Flickr_-_treegrow.jpg",
+    "kind": "ood/near_bird",
+    "label": "Canada Goose",
+    "query": "Canada Goose",
+    "author": "Katja Schulz from Washington, D. C., USA",
+    "license": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACanada_Geese_-_Flickr_-_treegrow.jpg",
+    "bytes": 224902
+  },
+  {
+    "file": "ood/near_bird/Mute_Swan/960px-093_Wild_Mute_swan_at_Lake_Geneva_during_sunset_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Mute Swan",
+    "query": "Mute Swan",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A093_Wild_Mute_swan_at_Lake_Geneva_during_sunset_Photo_by_Giles_Laurent.jpg",
+    "bytes": 72961
+  },
+  {
+    "file": "ood/near_bird/Mute_Swan/960px-Höckerschwan_Cygnus_olor_7b_Richard_Bartz.jpg",
+    "kind": "ood/near_bird",
+    "label": "Mute Swan",
+    "query": "Mute Swan",
+    "author": "This picture was realized by Richard Bartz by using a Canon EF 70-300mm f/4-5.6 IS USM Lens",
+    "license": "CC BY-SA 2.5",
+    "source": "https://commons.wikimedia.org/wiki/File%3AH%C3%B6ckerschwan_Cygnus_olor_7b_Richard_Bartz.jpg",
+    "bytes": 131670
+  },
+  {
+    "file": "ood/near_bird/Mute_Swan/960px-Swan_with_nine_cygnets_3.jpg",
+    "kind": "ood/near_bird",
+    "label": "Mute Swan",
+    "query": "Mute Swan",
+    "author": "S Sepp",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASwan_with_nine_cygnets_3.jpg",
+    "bytes": 172832
+  },
+  {
+    "file": "ood/near_bird/Mute_Swan/960px-Cygne_tuberculé_juvénile_(Cygnus_olor)_-_tête_(1).jpg",
+    "kind": "ood/near_bird",
+    "label": "Mute Swan",
+    "query": "Mute Swan",
+    "author": "Gzen92",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACygne_tubercul%C3%A9_juv%C3%A9nile_%28Cygnus_olor%29_-_t%C3%AAte_%281%29.jpg",
+    "bytes": 124681
+  },
+  {
+    "file": "ood/near_bird/Greater_Flamingo/960px-005c_Greater_flamingos_courtship_display_in_the_Camargue_during_mating_season_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Greater Flamingo",
+    "query": "Greater Flamingo",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A005c_Greater_flamingos_courtship_display_in_the_Camargue_during_mating_season_Photo_by_Giles_Laurent.jpg",
+    "bytes": 93063
+  },
+  {
+    "file": "ood/near_bird/Greater_Flamingo/960px-Flamant_rose_Thyna009.jpg",
+    "kind": "ood/near_bird",
+    "label": "Greater Flamingo",
+    "query": "Greater Flamingo",
+    "author": "El Golli Mohamed",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AFlamant_rose_Thyna009.jpg",
+    "bytes": 249403
+  },
+  {
+    "file": "ood/near_bird/Greater_Flamingo/960px-010_Greater_flamingos_male_and_female_in_the_Camargue_during_mating_season_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Greater Flamingo",
+    "query": "Greater Flamingo",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A010_Greater_flamingos_male_and_female_in_the_Camargue_during_mating_season_Photo_by_Giles_Laurent.jpg",
+    "bytes": 112522
+  },
+  {
+    "file": "ood/near_bird/Greater_Flamingo/960px-001_Greater_flamingo_in_flight_in_the_Camargue_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Greater Flamingo",
+    "query": "Greater Flamingo",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A001_Greater_flamingo_in_flight_in_the_Camargue_Photo_by_Giles_Laurent.jpg",
+    "bytes": 73701
+  },
+  {
+    "file": "ood/near_bird/Indian_Peafowl/960px-Indian_Peacock_in_Tholpetty_Wildlife_Sanctuary_01.JPG",
+    "kind": "ood/near_bird",
+    "label": "Indian Peafowl",
+    "query": "Indian Peafowl",
+    "author": "Praveenp",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AIndian_Peacock_in_Tholpetty_Wildlife_Sanctuary_01.JPG",
+    "bytes": 174137
+  },
+  {
+    "file": "ood/near_bird/Indian_Peafowl/960px-Pfau_imponierend.jpg",
+    "kind": "ood/near_bird",
+    "label": "Indian Peafowl",
+    "query": "Indian Peafowl",
+    "author": "BS Thurner Hof",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APfau_imponierend.jpg",
+    "bytes": 398435
+  },
+  {
+    "file": "ood/near_bird/Indian_Peafowl/960px-Paonroue.JPG",
+    "kind": "ood/near_bird",
+    "label": "Indian Peafowl",
+    "query": "Indian Peafowl",
+    "author": "Jebulon",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3APaonroue.JPG",
+    "bytes": 489685
+  },
+  {
+    "file": "ood/near_bird/Indian_Peafowl/960px-Carnavalesco.jpg",
+    "kind": "ood/near_bird",
+    "label": "Indian Peafowl",
+    "query": "Indian Peafowl",
+    "author": "Gabriel Castaldini",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ACarnavalesco.jpg",
+    "bytes": 381905
+  },
+  {
+    "file": "ood/near_bird/Common_Ostrich/960px-Avestruz_alta.jpg",
+    "kind": "ood/near_bird",
+    "label": "Common Ostrich",
+    "query": "Common Ostrich",
+    "author": "Museum of Veterinary Anatomy FMVZ USP",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AAvestruz_alta.jpg",
+    "bytes": 88658
+  },
+  {
+    "file": "ood/near_bird/Common_Ostrich/960px-104_Juvenile_South_African_ostrich_in_the_Kalahari_Desert_of_Namibia_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Common Ostrich",
+    "query": "Common Ostrich",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A104_Juvenile_South_African_ostrich_in_the_Kalahari_Desert_of_Namibia_Photo_by_Giles_Laurent.jpg",
+    "bytes": 240628
+  },
+  {
+    "file": "ood/near_bird/Common_Ostrich/North_African_Ostrich_-_Masai_Ostrich_(Struthio_camelus_massaicus)_-_Flickr_-_Lip_Kee.jpg",
+    "kind": "ood/near_bird",
+    "label": "Common Ostrich",
+    "query": "Common Ostrich",
+    "author": "Lip Kee from Singapore, Republic of Singapore",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ANorth_African_Ostrich_-_Masai_Ostrich_%28Struthio_camelus_massaicus%29_-_Flickr_-_Lip_Kee.jpg",
+    "bytes": 189993
+  },
+  {
+    "file": "ood/near_bird/Common_Ostrich/960px-Ostrich_in_a_garden.jpg",
+    "kind": "ood/near_bird",
+    "label": "Common Ostrich",
+    "query": "Common Ostrich",
+    "author": "Knowledge and philosophy",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AOstrich_in_a_garden.jpg",
+    "bytes": 272463
+  },
+  {
+    "file": "ood/near_bird/Toco_Toucan/960px-006_Toco_toucan_in_Encontro_das_Águas_State_Park_Photo_by_Giles_Laurent.jpg",
+    "kind": "ood/near_bird",
+    "label": "Toco Toucan",
+    "query": "Toco Toucan",
+    "author": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A006_Toco_toucan_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg",
+    "bytes": 115654
+  },
+  {
+    "file": "ood/near_bird/Toco_Toucan/960px-Toco_Toucan_(Ramphastos_toco)_in_Papaya_Tree_(Carica_papaya)_(28997424215).jpg",
+    "kind": "ood/near_bird",
+    "label": "Toco Toucan",
+    "query": "Toco Toucan",
+    "author": "Bernard DUPONT from FRANCE",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AToco_Toucan_%28Ramphastos_toco%29_in_Papaya_Tree_%28Carica_papaya%29_%2828997424215%29.jpg",
+    "bytes": 107156
+  },
+  {
+    "file": "ood/near_bird/Toco_Toucan/960px-Ramphastos_toco_-_Luana_Guedes_Ferreira_-_420234557.jpeg",
+    "kind": "ood/near_bird",
+    "label": "Toco Toucan",
+    "query": "Toco Toucan",
+    "author": "Luana Guedes Ferreira",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARamphastos_toco_-_Luana_Guedes_Ferreira_-_420234557.jpeg",
+    "bytes": 134861
+  },
+  {
+    "file": "ood/near_bird/Toco_Toucan/960px-Ramphastos_toco_407212656.jpg",
+    "kind": "ood/near_bird",
+    "label": "Toco Toucan",
+    "query": "Toco Toucan",
+    "author": "Pablo",
+    "license": "CC BY 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ARamphastos_toco_407212656.jpg",
+    "bytes": 120541
+  },
+  {
+    "file": "ood/near_bird/Southern_Ground_Hornbill/960px-Southern_Ground_Hornbill_(Bucorvus_leadbeateri)_male,_Kruger_NP_(51889201069).jpg",
+    "kind": "ood/near_bird",
+    "label": "Southern Ground Hornbill",
+    "query": "Southern Ground Hornbill",
+    "author": "Bernard DUPONT from FRANCE",
+    "license": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ASouthern_Ground_Hornbill_%28Bucorvus_leadbeateri%29_male%2C_Kruger_NP_%2851889201069%29.jpg",
+    "bytes": 204443
+  },
+  {
+    "file": "ood/near_bird/Southern_Ground_Hornbill/960px-2008-06-21_Artis_02_Bucorvus_leadbeateri.jpg",
+    "kind": "ood/near_bird",
+    "label": "Southern Ground Hornbill",
+    "query": "Southern Ground Hornbill",
+    "author": "Szilas",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3A2008-06-21_Artis_02_Bucorvus_leadbeateri.jpg",
+    "bytes": 394821
+  },
+  {
+    "file": "ood/near_bird/Southern_Ground_Hornbill/960px-Bucorvus_leadbeateri_Belgrade_ZOO.jpg",
+    "kind": "ood/near_bird",
+    "label": "Southern Ground Hornbill",
+    "query": "Southern Ground Hornbill",
+    "author": "Gmihail at Serbian Wikipedia",
+    "license": "CC BY-SA 3.0 rs",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABucorvus_leadbeateri_Belgrade_ZOO.jpg",
+    "bytes": 405694
+  },
+  {
+    "file": "ood/near_bird/Southern_Ground_Hornbill/960px-Kruger_Park_Southern_Ground-Hornbill_01.jpg",
+    "kind": "ood/near_bird",
+    "label": "Southern Ground Hornbill",
+    "query": "Southern Ground Hornbill",
+    "author": "Ad Meskens\nYou are free to use this picture for any purpose as long as you credit its author, Ad Meskens.\nExample:  © Ad Meskens / Wikimedia Commons\n  If you use this work outside of the Wikimedia projects, a message or a copy is very much appreciated.\n\n\tThis image is not in the public domain. A statement such as \"From Wikimedia Commons\" or similar is not by itself sufficient. If you do not provide clear attribution to the author you do not comply with the terms of the file's license and you may not use this file. If you are unable or unwilling to provide attribution you should contact Ad Meskens to negotiate a different license.",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AKruger_Park_Southern_Ground-Hornbill_01.jpg",
+    "bytes": 446099
+  },
+  {
+    "file": "ood/near_bird/Grey_Crowned_Crane/960px-Balearica_regulorum_portrait_3.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Crowned Crane",
+    "query": "Grey Crowned Crane",
+    "author": "Francis C. Franklin",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABalearica_regulorum_portrait_3.jpg",
+    "bytes": 178961
+  },
+  {
+    "file": "ood/near_bird/Grey_Crowned_Crane/960px-Grulla_coronada_cuelligrís_(Balearica_regulorum),_parque_nacional_de_Tarangire,_Tanzania,_2024-05-24,_DD_15.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Crowned Crane",
+    "query": "Grey Crowned Crane",
+    "author": "Diego Delso",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3AGrulla_coronada_cuelligr%C3%ADs_%28Balearica_regulorum%29%2C_parque_nacional_de_Tarangire%2C_Tanzania%2C_2024-05-24%2C_DD_15.jpg",
+    "bytes": 266046
+  },
+  {
+    "file": "ood/near_bird/Grey_Crowned_Crane/960px-Balearica_regulorum_-_Karlsruhe_Zoo_02.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Crowned Crane",
+    "query": "Grey Crowned Crane",
+    "author": "H. Zell",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File%3ABalearica_regulorum_-_Karlsruhe_Zoo_02.jpg",
+    "bytes": 432768
+  },
+  {
+    "file": "ood/near_bird/Grey_Crowned_Crane/960px-A_Golden-Crested_Crain.jpg",
+    "kind": "ood/near_bird",
+    "label": "Grey Crowned Crane",
+    "query": "Grey Crowned Crane",
+    "author": "Unknown authorUnknown author",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File%3AA_Golden-Crested_Crain.jpg",
+    "bytes": 393063
+  }
+]

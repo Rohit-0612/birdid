@@ -1,0 +1,18 @@
+{
+  "dataset": "CUB-200-2011",
+  "source": "CUB_200_2011/train_test_split.txt (official)",
+  "val_carved_from": "official train only; official test never touched",
+  "val_frac": 0.1,
+  "seed": 42,
+  "counts": {
+    "train": 5394,
+    "val": 600,
+    "test": 5794
+  },
+  "sha256": {
+    "train": "8f16b23b613194836d0185c1966201497f3bf2ca04ddb33f2dce2b3a57377989",
+    "val": "f4bd7a157d88a1d55fd97758cb55621f1a38a69eb7cceebb296e4f7b19bf6b0d",
+    "test": "32e2f2191aec6dac6f7db469c24065874371064368ac2385daecf48903bb0081"
+  },
+  "line_format": "relative_path_under_CUB_200_2011/images<TAB>class_index_0based"
+}

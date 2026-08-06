@@ -102,6 +102,32 @@ model = model.to(device)
 model.eval()
 print(f"✅ Model loaded — {NUM_SPECIES} species")
 
+# ── Provenance gate ──────────────────────────────────────────
+# Checkpoints produced by train.py record the sha256 of the split manifests
+# they were trained against, so any accuracy claim can be traced to an exact
+# image list. The original checkpoint has no such record, and it shows:
+# measured top-1 was 94.6% on official CUB train, 94.2% on official test, and
+# 95.2% on official test images that were never in birds_split/train — images
+# it supposedly never saw scoring HIGHER than ones it did, against a realistic
+# ~86–88% ceiling for this architecture. It has effectively seen all of CUB.
+#
+# Any evaluation of such a checkpoint is meaningless, so say so loudly rather
+# than rendering a confident-looking 94%.
+MODEL_IS_AUDITED = "split_manifest_sha256" in checkpoint
+
+CONTAMINATION_WARNING = (
+    "⚠️  UNTRUSTWORTHY RESULT — this checkpoint has no recorded training split.\n"
+    "    Measured evidence says it saw essentially the whole CUB dataset:\n"
+    "    official-test images never held out still score ~95%, above the\n"
+    "    ~86–88% realistic ceiling for this architecture.\n"
+    "    Whatever number appears below is inflated by memorisation.\n"
+    "    Retrain with train.py (official split, manifest hashed) for a real one.\n"
+    + "─" * 55 + "\n"
+)
+if not MODEL_IS_AUDITED:
+    print("⚠️  Loaded checkpoint has no split manifest — its accuracy numbers "
+          "are not trustworthy (see CONTAMINATION_WARNING)")
+
 # ── Transforms ───────────────────────────────────────────────
 val_transform = transforms.Compose([
     transforms.Resize((380, 380)),
@@ -882,7 +908,9 @@ def run_evaluation():
             f.write(f"Top-1 Accuracy: {top1_acc:.2f}%\nTop-5 Accuracy: {top5_acc:.2f}%\n\n{report}")
 
         return (
+            ("" if MODEL_IS_AUDITED else CONTAMINATION_WARNING) +
             f"✅ EVALUATION COMPLETE!\n\n"
+            f"Split          : {os.path.relpath(TEST_DIR, PROJECT_DIR)}\n"
             f"Top-1 Accuracy : {top1_acc:.2f}%\n"
             f"Top-5 Accuracy : {top5_acc:.2f}%\n\n"
             f"Best species   : {short_names[best10[0]]} (F1: {f1[best10[0]]*100:.1f}%)\n"
@@ -962,6 +990,7 @@ def run_calibration():
         plt.close()
 
         return (
+            ("" if MODEL_IS_AUDITED else CONTAMINATION_WARNING) +
             f"✅ CALIBRATION COMPLETE!\n\n"
             f"ECE (Expected Calibration Error) : {ece:.2f}%\n"
             f"Mean confidence                  : {confidences.mean()*100:.2f}%\n"

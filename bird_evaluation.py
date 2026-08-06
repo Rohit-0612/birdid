@@ -62,6 +62,24 @@ def load_model():
 model = load_model()
 print(f"✅ Model loaded — {NUM_SPECIES} species\n")
 
+# ── Provenance gate ──────────────────────────────────────────
+# Checkpoints from train.py record the sha256 of the split manifests they were
+# trained on. One without that record cannot be evaluated honestly: the
+# original checkpoint scores ~95% even on official-CUB-test images that were
+# never held out, well above the ~86-88% realistic ceiling, which means it has
+# effectively seen the whole dataset. Every number below is then inflated by
+# memorisation, so refuse to print one silently.
+MODEL_IS_AUDITED = "split_manifest_sha256" in checkpoint
+CONTAMINATION_WARNING = (
+    "\n" + "!" * 62 + "\n"
+    "  UNTRUSTWORTHY: this checkpoint records no training split.\n"
+    "  Every accuracy figure below is inflated by memorisation and\n"
+    "  must not be reported. Retrain with train.py for a real number.\n"
+    + "!" * 62 + "\n"
+)
+if not MODEL_IS_AUDITED:
+    print(CONTAMINATION_WARNING)
+
 # ── Transform (same as training) ─────────────────────────────
 val_transform = transforms.Compose([
     transforms.Resize((380, 380)),
