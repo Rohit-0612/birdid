@@ -1,0 +1,12 @@
+# Training / research extras. Not needed to run the app.
+# Intended for Google Colab (free T4) rather than local CPU/MPS.
+#
+# Install:  pip3 install -r requirements-train.txt
+
+-r requirements.txt
+
+# Modern backbones, augmentation (mixup/cutmix), EMA helpers
+timm>=1.0.0
+
+# BioCLIP / BioCLIP-2 linear probe
+open_clip_torch>=2.24.0

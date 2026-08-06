@@ -1,0 +1,24 @@
+# Core app — enough to run the identifier UI.
+# Install:  pip3 install -r requirements.txt
+#
+# Note: no ffmpeg needed. Audio is decoded via soundfile/libsndfile,
+# which handles MP3 from libsndfile 1.1 onward.
+
+torch==2.11.0
+torchvision==0.26.0
+gradio==6.12.0
+pillow==12.0.0
+numpy==1.26.4
+matplotlib==3.10.7
+
+# Explainability (Grad-CAM tab)
+grad-cam==1.5.5
+
+# Evaluation metrics (accuracy, F1, confusion matrix, calibration)
+scikit-learn==1.7.2
+seaborn==0.13.2
+
+# Audio identification (BirdNET)
+birdnetlib==0.18.1
+librosa==0.11.0
+soundfile==0.13.1

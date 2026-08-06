@@ -14,6 +14,11 @@
 #  Then open: http://127.0.0.1:7860
 # ============================================================
 
+import os
+# Must be set before torch is imported: a few ops still have no MPS
+# kernel and need to fall back to CPU instead of raising.
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -25,7 +30,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import os
 import gradio as gr
 
 try:
@@ -40,19 +44,48 @@ except ImportError:
     print("⚠️  birdnetlib not installed. Run: pip3 install birdnetlib")
 
 # ============================================================
-# ✅ SET YOUR PATHS HERE
+# PATHS — resolved relative to this file, overridable by env var
+# so the project runs from any checkout without editing source.
 # ============================================================
-MODEL_PATH = "/Users/swayam/Desktop/birdsproject/best_bird_model.pth"
-TEST_DIR   = "/Users/swayam/Desktop/birdsproject/birds_split/test"
-SAVE_DIR   = "/Users/swayam/Desktop/birdsproject/evaluation"
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+TEST_DIR = os.environ.get("BIRD_TEST_DIR", os.path.join(PROJECT_DIR, "birds_split", "test"))
+SAVE_DIR = os.environ.get("BIRD_SAVE_DIR", os.path.join(PROJECT_DIR, "evaluation"))
+
+# Prefer the slim inference checkpoint (79 MB); fall back to the full
+# training checkpoint (235 MB) which additionally carries optimizer state.
+_MODEL_CANDIDATES = [
+    os.environ.get("BIRD_MODEL_PATH"),
+    os.path.join(PROJECT_DIR, "best_bird_model_inference.pth"),
+    os.path.join(PROJECT_DIR, "best_bird_model.pth"),
+]
+MODEL_PATH = next((p for p in _MODEL_CANDIDATES if p and os.path.exists(p)), None)
+if MODEL_PATH is None:
+    raise FileNotFoundError(
+        "No model checkpoint found. Expected best_bird_model_inference.pth or "
+        f"best_bird_model.pth in {PROJECT_DIR}, or set BIRD_MODEL_PATH."
+    )
 # ============================================================
 
 os.makedirs(SAVE_DIR, exist_ok=True)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def pick_device():
+    """CUDA if present, else Apple-Silicon MPS, else CPU."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+device = pick_device()
+DEVICE_LABEL = {"cuda": "CUDA", "mps": "Apple MPS", "cpu": "CPU"}[device.type]
 print(f"\n🚀 Running on: {device}")
 
 # ── Load model ───────────────────────────────────────────────
-print("Loading model...")
+print(f"Loading model from {os.path.basename(MODEL_PATH)} "
+      f"({os.path.getsize(MODEL_PATH) / 2**20:.0f} MB)...")
 checkpoint  = torch.load(MODEL_PATH, map_location=device)
 CLASS_NAMES = checkpoint["class_names"]
 NUM_SPECIES = len(CLASS_NAMES)
@@ -80,7 +113,20 @@ norm_transform = transforms.Normalize(
     [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
 )
 
-# ── Habitat map ──────────────────────────────────────────────
+# ── Species naming ───────────────────────────────────────────
+# Every lookup table below is keyed on the raw CUB folder name
+# ("112.Artic_Tern"), never on the display name. CUB ships several
+# misspelled folders — keying on the display name is how the old
+# MIGRATION_MAP["Arctic Tern"] entry became permanently unreachable.
+def display_name(folder_name):
+    """'112.Artic_Tern' -> 'Artic Tern'. Presentation only, never a key."""
+    return folder_name.split(".", 1)[-1].replace("_", " ")
+
+
+# ── Habitat (keyed on CUB folder name from the model's class_names) ──
+# Coverage is partial: 15 CUB species have no entry yet. Keys were
+# previously written against a DIFFERENT 200-species list, so only
+# 27/200 lookups ever succeeded. Now matched by species name.
 HABITAT_MAP = {
     "001.Black_footed_Albatross":          "USA, Japan, Hawaii (North Pacific Ocean — nests on Hawaiian Islands)",
     "002.Laysan_Albatross":                "USA (Hawaii), Japan — breeds on Midway Atoll and Hawaiian Islands",
@@ -109,235 +155,399 @@ HABITAT_MAP = {
     "025.Pelagic_Cormorant":               "USA (Pacific coast), Canada (British Columbia), Russia",
     "026.Bronzed_Cowbird":                 "USA (Texas, Arizona), Mexico, Central America",
     "027.Shiny_Cowbird":                   "South America (widespread), Caribbean — Argentina, Brazil, Colombia",
-    "028.Brown_headed_Cowbird":            "USA, Canada — widespread across North America",
-    "029.Pigeon_Guillemot":                "USA (Alaska, California), Canada, Russia — North Pacific coastal cliffs",
-    "030.California_Gull":                 "USA (California, Great Basin states), Canada",
-    "031.Glaucous_winged_Gull":            "USA (Alaska, Washington, Oregon), Canada (British Columbia)",
-    "032.Heermann_Gull":                   "USA (California coast), Mexico (Baja California)",
-    "033.Herring_Gull":                    "USA, Canada, UK, northern Europe — widespread across North Atlantic",
-    "034.Ivory_Gull":                      "Canada (Arctic), Russia (Arctic), Norway (Svalbard)",
-    "035.Ring_billed_Gull":                "USA, Canada — one of the most common gulls across North America",
-    "036.Slaty_backed_Gull":               "Russia (eastern Siberia), Japan, South Korea, China",
-    "037.Western_Gull":                    "USA (California, Oregon, Washington) — Pacific coast only",
-    "038.Anna_Hummingbird":                "USA (California, Arizona, Oregon), Mexico (Baja) — Pacific coast year-round",
-    "039.Ruby_throated_Hummingbird":       "USA (eastern states), Canada (Ontario), Mexico, Central America",
-    "040.Rufous_Hummingbird":              "USA (western states), Canada (British Columbia), Mexico",
-    "041.Green_Violetear":                 "Mexico, Guatemala, Costa Rica, Venezuela, Colombia — mountain forests",
-    "042.Long_tailed_Jaeger":              "Canada (Arctic), USA (Alaska), winters in South Atlantic",
-    "043.Pomarine_Jaeger":                 "USA (Alaska), Canada (Arctic tundra)",
-    "044.Blue_Jay":                        "USA (eastern & central states), Canada (Ontario, Quebec)",
-    "045.Florida_Jay":                     "USA (Florida only) — found exclusively in Florida scrub habitat",
-    "046.Green_Jay":                       "USA (southern Texas only), Mexico, Central America",
-    "047.Dark_eyed_Junco":                 "USA, Canada — one of the most common birds in North America",
-    "048.Tropical_Kingbird":               "USA (southern Arizona, Texas), Mexico, Central America, South America",
-    "049.Gray_Kingbird":                   "USA (Florida), Caribbean islands — Cuba, Jamaica, Puerto Rico",
-    "050.Belted_Kingfisher":               "USA, Canada — found near rivers and lakes across all of North America",
-    "051.Green_Kingfisher":                "USA (southern Texas, Arizona), Mexico, Central America, South America",
-    "052.Pied_Kingfisher":                 "Africa (sub-Saharan), India, Southeast Asia",
-    "053.Ringed_Kingfisher":               "USA (southern Texas), Mexico, Central America, South America",
-    "054.White_breasted_Kingfisher":       "India, Sri Lanka, Southeast Asia (Thailand, Vietnam, Philippines)",
-    "055.Red_legged_Kittiwake":            "USA (Alaska — Pribilof Islands) — very restricted range",
-    "056.Horned_Lark":                     "USA, Canada — most widespread lark in North America",
-    "057.Pacific_Loon":                    "USA (Alaska), Canada (Arctic) — winters along Pacific coast",
-    "058.Mallard":                         "USA, Canada, UK, Europe, Asia — most widespread duck in the world",
-    "059.Western_Meadowlark":              "USA (western & central states), Canada (prairies), Mexico",
-    "060.Hooded_Merganser":                "USA, Canada — breeds in forested lakes from Alaska to Florida",
-    "061.Red_breasted_Merganser":          "USA, Canada, UK, northern Europe — circumpolar breeding range",
-    "062.Mockingbird":                     "USA (all states), Canada (southern Ontario), Mexico, Caribbean",
-    "063.Nighthawk":                       "USA, Canada (breeds), South America (winters)",
-    "064.Clark_Nutcracker":                "USA (western mountain states — Colorado, Wyoming, Montana, California)",
-    "065.White_breasted_Nuthatch":         "USA, Canada — common in deciduous forests across North America",
-    "066.Baltimore_Oriole":                "USA (eastern states), Canada (Ontario), Mexico, Central America (winters)",
-    "067.Hooded_Oriole":                   "USA (California, Arizona, Texas), Mexico",
-    "068.Orchard_Oriole":                  "USA (eastern & central states), Canada, Mexico, Central America (winters)",
-    "069.Scott_Oriole":                    "USA (Texas, Arizona, California), Mexico",
-    "070.Ovenbird":                        "USA (eastern states), Canada — breeds from Georgia to Manitoba",
-    "071.Brown_Pelican":                   "USA (coastal states — California, Florida, Texas), Mexico, Caribbean",
-    "072.White_Pelican":                   "USA, Canada — breeds on lakes in Great Plains, winters on Gulf Coast",
-    "073.Western_Wood_Pewee":              "USA (western states), Canada (British Columbia), Mexico, South America",
-    "074.Sayornis":                        "USA, Canada, Mexico — widespread flycatcher across North America",
-    "075.American_Pipit":                  "USA (Alaska, mountain states), Canada (Arctic)",
-    "076.Whip_poor_Will":                  "USA (eastern states), Canada (Ontario, Quebec), Mexico, Central America",
-    "077.Horned_Puffin":                   "USA (Alaska), Russia, Canada — North Pacific",
-    "078.Common_Raven":                    "USA (western states, Alaska), Canada, UK, northern Europe, Asia",
-    "079.White_necked_Raven":              "USA (Texas, Arizona), Mexico — Chihuahuan and Sonoran Desert",
-    "080.American_Redstart":               "USA (eastern states), Canada — breeds from Georgia to Nova Scotia",
-    "081.Geococcyx":                       "USA (Texas, New Mexico, Arizona, California), Mexico",
-    "082.Loggerhead_Shrike":               "USA, Canada (southern Ontario) — widespread but declining",
-    "083.Great_Grey_Shrike":               "Canada (Arctic), Russia, northern Europe (Scandinavia, Finland)",
-    "084.Baird_Sparrow":                   "USA (Montana, North Dakota), Canada (Manitoba, Saskatchewan)",
-    "085.Black_throated_Sparrow":          "USA (Texas, New Mexico, Arizona, Nevada, California), Mexico",
-    "086.Brewer_Sparrow":                  "USA (western states), Canada (British Columbia, Alberta), Mexico",
-    "087.Chipping_Sparrow":                "USA, Canada — one of the most common sparrows across North America",
-    "088.Clay_colored_Sparrow":            "USA (Great Plains states), Canada (prairies)",
-    "089.House_Sparrow":                   "USA, Canada, UK, Europe, Australia, India — introduced worldwide",
-    "090.Field_Sparrow":                   "USA (eastern & central states) — common from Texas to New England",
-    "091.Fox_Sparrow":                     "USA (western states, Alaska), Canada",
-    "092.Grasshopper_Sparrow":             "USA (central & eastern states), Canada (Ontario), Mexico",
-    "093.Harris_Sparrow":                  "USA (Great Plains — Kansas, Oklahoma, Texas in winter), Canada",
-    "094.Henslow_Sparrow":                 "USA (Midwest — Ohio, Indiana, Illinois, New York) — rare and declining",
-    "095.Le_Conte_Sparrow":                "USA (Great Plains, Southeast), Canada (prairies)",
-    "096.Lincoln_Sparrow":                 "USA, Canada (breeds), Mexico, Central America (winters)",
-    "097.Nelson_Sharp_tailed_Sparrow":     "USA (Atlantic coast — Maine to Virginia), Canada (Maritime provinces)",
-    "098.Savannah_Sparrow":                "USA, Canada — one of the most widespread sparrows in North America",
-    "099.Seaside_Sparrow":                 "USA (Atlantic & Gulf coast — Virginia to Texas)",
-    "100.Song_Sparrow":                    "USA, Canada — extremely common and widespread across North America",
-    "101.Tree_Sparrow":                    "Canada (Arctic, boreal), USA (northern states in winter)",
-    "102.Vesper_Sparrow":                  "USA (western & central states), Canada (prairies), Mexico (winters)",
-    "103.White_crowned_Sparrow":           "USA, Canada — widespread migrant, breeds in Canada and mountain west",
-    "104.White_throated_Sparrow":          "USA (eastern states in winter), Canada (breeds)",
-    "105.Cape_Glossy_Starling":            "Kenya, Tanzania, Uganda, Ethiopia, Somalia — East Africa savanna",
-    "106.Bank_Swallow":                    "USA, Canada (breeds), South America (winters)",
-    "107.Barn_Swallow":                    "USA, Canada (breeds), South America, Africa (winters)",
-    "108.Cliff_Swallow":                   "USA, Canada (breeds), South America (winters)",
-    "109.Tree_Swallow":                    "USA, Canada (breeds), Mexico, Central America (winters)",
-    "110.Scarlet_Tanager":                 "USA (eastern states), Canada (Ontario), South America (winters)",
-    "111.Summer_Tanager":                  "USA (southern states — Georgia, Texas, Carolina), Mexico, South America",
-    "112.Artic_Tern":                      "Canada, USA (Alaska), UK, Norway — longest migration on Earth",
-    "113.Black_Tern":                      "USA (Midwest lakes), Canada, Europe",
-    "114.Caspian_Tern":                    "USA (Great Lakes, Gulf Coast), Canada, Europe, Africa, Australia",
-    "115.Common_Tern":                     "USA, Canada, UK, Europe — widespread across North Atlantic coasts",
-    "116.Elegant_Tern":                    "USA (California coast), Mexico (Baja California)",
-    "117.Forsters_Tern":                   "USA, Canada — breeds in Great Plains marshes, winters on both coasts",
-    "118.Least_Tern":                      "USA (Atlantic & Gulf coast, river valleys), Mexico, Caribbean",
-    "119.Green_tailed_Towhee":             "USA (western mountain states — Colorado, Utah, California), Mexico",
-    "120.Brown_Thrasher":                  "USA (eastern & central states), Canada (Ontario)",
-    "121.Sage_Thrasher":                   "USA (Great Basin — Nevada, Idaho, Wyoming, Oregon), Mexico (winters)",
-    "122.Black_capped_Vireo":              "USA (Texas, Oklahoma only), Mexico (winters) — endangered species",
-    "123.Blue_headed_Vireo":               "USA (eastern states), Canada (Ontario, Quebec), Central America",
-    "124.Philadelphia_Vireo":              "USA (northeastern states), Canada (Ontario to Alberta), Central America",
-    "125.Red_eyed_Vireo":                  "USA, Canada — one of the most common breeding birds in eastern North America",
-    "126.Warbling_Vireo":                  "USA, Canada (breeds), Mexico, Central America (winters)",
-    "127.White_eyed_Vireo":                "USA (southeastern & eastern states), Mexico, Central America (winters)",
-    "128.Yellow_throated_Vireo":           "USA (eastern states), Canada (Ontario), South America (winters)",
-    "129.Bay_breasted_Warbler":            "Canada (boreal — Ontario to Newfoundland), USA (eastern states)",
-    "130.Black_and_white_Warbler":         "USA (eastern states), Canada",
-    "131.Black_throated_Blue_Warbler":     "USA (eastern mountain states — Appalachians), Canada, Caribbean",
-    "132.Blue_winged_Warbler":             "USA (eastern states — Ohio, Indiana, New York), Mexico, Central America",
-    "133.Canada_Warbler":                  "USA (northeastern states), Canada (Ontario to Nova Scotia), South America",
-    "134.Cape_May_Warbler":                "Canada (boreal — Ontario, Quebec, Manitoba), USA (eastern states)",
-    "135.Cerulean_Warbler":                "USA (Appalachians, Midwest), Canada (Ontario), South America (winters)",
-    "136.Chestnut_sided_Warbler":          "USA (northeastern states), Canada (Ontario, Quebec), Central America",
-    "137.Golden_winged_Warbler":           "USA (Appalachians, Great Lakes region), Canada, Central America",
-    "138.Hooded_Warbler":                  "USA (eastern states — Georgia, Virginia, Tennessee), Mexico",
-    "139.Kentucky_Warbler":                "USA (southeastern states — Kentucky, Tennessee, Arkansas), Central America",
-    "140.Magnolia_Warbler":                "Canada (boreal — Ontario to Nova Scotia), USA (eastern states)",
-    "141.Mourning_Warbler":                "Canada (Ontario to Manitoba), USA (northeastern states), Central America",
-    "142.Myrtle_Warbler":                  "USA, Canada — one of the most common warblers, breeds across Canada",
-    "143.Nashville_Warbler":               "USA (northeastern & western states), Canada, Mexico, Central America",
-    "144.Orange_crowned_Warbler":          "USA (western states), Canada (British Columbia, Alberta), Mexico",
-    "145.Palm_Warbler":                    "Canada (boreal bogs — Ontario to Newfoundland), USA (Florida in winter)",
-    "146.Pine_Warbler":                    "USA (southeastern states — Florida, Georgia, Texas, Carolina)",
-    "147.Prairie_Warbler":                 "USA (eastern states — Michigan, Ohio, New Jersey, Florida), Caribbean",
-    "148.Prothonotary_Warbler":            "USA (southeastern states — Louisiana, Mississippi, Tennessee, Virginia)",
-    "149.Swainson_Warbler":                "USA (southeastern states — Arkansas, Louisiana, South Carolina)",
-    "150.Tennessee_Warbler":               "Canada (boreal — Ontario to Alberta), USA (eastern states)",
-    "151.Wilson_Warbler":                  "USA (western states, Alaska), Canada (widespread), Mexico",
-    "152.Worm_eating_Warbler":             "USA (eastern states — Pennsylvania, Maryland, Ohio, Georgia)",
-    "153.Yellow_Warbler":                  "USA, Canada — most widespread warbler in North America",
-    "154.Northern_Waterthrush":            "USA (northeastern states), Canada (widespread boreal), Central America",
-    "155.Louisiana_Waterthrush":           "USA (eastern states — Pennsylvania to Georgia, west to Kansas)",
-    "156.Bohemian_Waxwing":                "Canada (boreal — British Columbia to Manitoba), USA (northern states)",
-    "157.Cedar_Waxwing":                   "USA, Canada — very common, found across all of North America year-round",
-    "158.American_Three_toed_Woodpecker":  "USA (Alaska, mountain west), Canada (boreal)",
-    "159.Pileated_Woodpecker":             "USA (eastern states, Pacific Northwest), Canada",
-    "160.Red_bellied_Woodpecker":          "USA (eastern states) — very common from Florida to New York to Texas",
-    "161.Red_cockaded_Woodpecker":         "USA (southeastern states — North Carolina to Texas) — endangered",
-    "162.Red_headed_Woodpecker":           "USA (eastern & central states), Canada (Ontario, Manitoba)",
-    "163.Downy_Woodpecker":                "USA, Canada — smallest and most common woodpecker in North America",
-    "164.Bewick_Wren":                     "USA (western & southern states — California, Texas, Oregon), Mexico",
-    "165.Cactus_Wren":                     "USA (Arizona, California, New Mexico, Texas), Mexico — Sonoran Desert",
-    "166.Carolina_Wren":                   "USA (eastern & southeastern states)",
-    "167.House_Wren":                      "USA, Canada (breeds), South America (winters)",
-    "168.Marsh_Wren":                      "USA, Canada — freshwater marshes across North America",
-    "169.Rock_Wren":                       "USA (western states — Colorado, Utah, California, Arizona), Mexico",
-    "170.Winter_Wren":                     "USA (Pacific Northwest, Appalachians), Canada, UK, Europe, Asia",
-    "171.Common_Yellowthroat":             "USA, Canada — one of the most widespread warblers in North America",
-    "172.Wilson_Snipe":                    "USA, Canada (breeds), Central America, South America (winters)",
-    "173.American_Woodcock":               "USA (eastern states), Canada (Ontario, Quebec)",
-    "174.Great_Crested_Flycatcher":        "USA (eastern states), Canada (Ontario), Mexico, Central America",
-    "175.Least_Flycatcher":                "USA (northeastern states), Canada (widespread), Mexico, Central America",
-    "176.Olive_sided_Flycatcher":          "USA (western states, Alaska), Canada (boreal), South America (winters)",
-    "177.Acadian_Flycatcher":              "USA (eastern states — Ohio, Virginia, Georgia, Texas), Central America",
-    "178.Yellow_bellied_Flycatcher":       "Canada (boreal — Ontario to Newfoundland), USA (northeastern states)",
-    "179.Pacific_slope_Flycatcher":        "USA (California, Oregon, Washington), Canada (British Columbia), Mexico",
-    "180.Black_billed_Cuckoo":             "USA (eastern & central states), Canada (Ontario, Quebec), South America",
-    "181.Yellow_billed_Cuckoo":            "USA (widespread), Canada (Ontario), Mexico, Central America",
-    "182.American_Crow":                   "USA, Canada — one of the most intelligent and common birds in North America",
-    "183.Fish_Crow":                       "USA (eastern & southeastern coastal states — New York to Texas)",
-    "184.Brown_Creeper":                   "USA, Canada — found in mature forests across North America year-round",
-    "185.Rock_Pigeon":                     "USA, Canada, UK, Europe, India, worldwide — introduced everywhere",
-    "186.White_crowned_Pigeon":            "USA (Florida Keys only), Caribbean — Cuba, Bahamas, Haiti, Jamaica",
-    "187.Band_tailed_Pigeon":              "USA (California, Oregon, Washington, Arizona), Canada, Mexico",
-    "188.Eared_Grebe":                     "USA (western states), Canada (prairies), Mexico, Spain, Africa",
-    "189.Horned_Grebe":                    "USA, Canada (breeds), UK, northern Europe",
-    "190.Red_necked_Grebe":                "USA (Pacific & Atlantic coasts in winter), Canada (breeds)",
-    "191.Pied_billed_Grebe":               "USA, Canada — most common grebe in North America",
-    "192.Western_Grebe":                   "USA (western states), Canada (British Columbia, prairies)",
-    "193.Gadwall":                         "USA, Canada (breeds), UK, Europe, Asia",
-    "194.Canvasback":                      "USA (Great Plains, western states), Canada (prairies)",
-    "195.Redhead":                         "USA (Great Plains, Great Lakes), Canada (prairies)",
-    "196.Ring_necked_Duck":                "USA, Canada (boreal) — very common diving duck across North America",
-    "197.Lesser_Scaup":                    "USA, Canada (breeds in Alaska and prairies)",
-    "198.Surf_Scoter":                     "USA (Pacific & Atlantic coasts), Canada (breeds in Alaska and boreal)",
-    "199.White_winged_Scoter":             "USA (both coasts in winter), Canada (breeds in boreal)",
-    "200.Long_tailed_Duck":                "USA (Great Lakes, both coasts), Canada (Arctic breeds)",
+    "028.Brown_Creeper":                   "USA, Canada — found in mature forests across North America year-round",
+    "029.American_Crow":                   "USA, Canada — one of the most intelligent and common birds in North America",
+    "030.Fish_Crow":                       "USA (eastern & southeastern coastal states — New York to Texas)",
+    "031.Black_billed_Cuckoo":             "USA (eastern & central states), Canada (Ontario, Quebec), South America",
+    "033.Yellow_billed_Cuckoo":            "USA (widespread), Canada (Ontario), Mexico, Central America",
+    "037.Acadian_Flycatcher":              "USA (eastern states — Ohio, Virginia, Georgia, Texas), Central America",
+    "038.Great_Crested_Flycatcher":        "USA (eastern states), Canada (Ontario), Mexico, Central America",
+    "039.Least_Flycatcher":                "USA (northeastern states), Canada (widespread), Mexico, Central America",
+    "040.Olive_sided_Flycatcher":          "USA (western states, Alaska), Canada (boreal), South America (winters)",
+    "043.Yellow_bellied_Flycatcher":       "Canada (boreal — Ontario to Newfoundland), USA (northeastern states)",
+    "046.Gadwall":                         "USA, Canada (breeds), UK, Europe, Asia",
+    "050.Eared_Grebe":                     "USA (western states), Canada (prairies), Mexico, Spain, Africa",
+    "051.Horned_Grebe":                    "USA, Canada (breeds), UK, northern Europe",
+    "052.Pied_billed_Grebe":               "USA, Canada — most common grebe in North America",
+    "053.Western_Grebe":                   "USA (western states), Canada (British Columbia, prairies)",
+    "058.Pigeon_Guillemot":                "USA (Alaska, California), Canada, Russia — North Pacific coastal cliffs",
+    "059.California_Gull":                 "USA (California, Great Basin states), Canada",
+    "060.Glaucous_winged_Gull":            "USA (Alaska, Washington, Oregon), Canada (British Columbia)",
+    "061.Heermann_Gull":                   "USA (California coast), Mexico (Baja California)",
+    "062.Herring_Gull":                    "USA, Canada, UK, northern Europe — widespread across North Atlantic",
+    "063.Ivory_Gull":                      "Canada (Arctic), Russia (Arctic), Norway (Svalbard)",
+    "064.Ring_billed_Gull":                "USA, Canada — one of the most common gulls across North America",
+    "065.Slaty_backed_Gull":               "Russia (eastern Siberia), Japan, South Korea, China",
+    "066.Western_Gull":                    "USA (California, Oregon, Washington) — Pacific coast only",
+    "067.Anna_Hummingbird":                "USA (California, Arizona, Oregon), Mexico (Baja) — Pacific coast year-round",
+    "068.Ruby_throated_Hummingbird":       "USA (eastern states), Canada (Ontario), Mexico, Central America",
+    "069.Rufous_Hummingbird":              "USA (western states), Canada (British Columbia), Mexico",
+    "070.Green_Violetear":                 "Mexico, Guatemala, Costa Rica, Venezuela, Colombia — mountain forests",
+    "071.Long_tailed_Jaeger":              "Canada (Arctic), USA (Alaska), winters in South Atlantic",
+    "072.Pomarine_Jaeger":                 "USA (Alaska), Canada (Arctic tundra)",
+    "073.Blue_Jay":                        "USA (eastern & central states), Canada (Ontario, Quebec)",
+    "074.Florida_Jay":                     "USA (Florida only) — found exclusively in Florida scrub habitat",
+    "075.Green_Jay":                       "USA (southern Texas only), Mexico, Central America",
+    "076.Dark_eyed_Junco":                 "USA, Canada — one of the most common birds in North America",
+    "077.Tropical_Kingbird":               "USA (southern Arizona, Texas), Mexico, Central America, South America",
+    "078.Gray_Kingbird":                   "USA (Florida), Caribbean islands — Cuba, Jamaica, Puerto Rico",
+    "079.Belted_Kingfisher":               "USA, Canada — found near rivers and lakes across all of North America",
+    "080.Green_Kingfisher":                "USA (southern Texas, Arizona), Mexico, Central America, South America",
+    "081.Pied_Kingfisher":                 "Africa (sub-Saharan), India, Southeast Asia",
+    "082.Ringed_Kingfisher":               "USA (southern Texas), Mexico, Central America, South America",
+    "083.White_breasted_Kingfisher":       "India, Sri Lanka, Southeast Asia (Thailand, Vietnam, Philippines)",
+    "084.Red_legged_Kittiwake":            "USA (Alaska — Pribilof Islands) — very restricted range",
+    "085.Horned_Lark":                     "USA, Canada — most widespread lark in North America",
+    "086.Pacific_Loon":                    "USA (Alaska), Canada (Arctic) — winters along Pacific coast",
+    "087.Mallard":                         "USA, Canada, UK, Europe, Asia — most widespread duck in the world",
+    "088.Western_Meadowlark":              "USA (western & central states), Canada (prairies), Mexico",
+    "089.Hooded_Merganser":                "USA, Canada — breeds in forested lakes from Alaska to Florida",
+    "090.Red_breasted_Merganser":          "USA, Canada, UK, northern Europe — circumpolar breeding range",
+    "091.Mockingbird":                     "USA (all states), Canada (southern Ontario), Mexico, Caribbean",
+    "092.Nighthawk":                       "USA, Canada (breeds), South America (winters)",
+    "093.Clark_Nutcracker":                "USA (western mountain states — Colorado, Wyoming, Montana, California)",
+    "094.White_breasted_Nuthatch":         "USA, Canada — common in deciduous forests across North America",
+    "095.Baltimore_Oriole":                "USA (eastern states), Canada (Ontario), Mexico, Central America (winters)",
+    "096.Hooded_Oriole":                   "USA (California, Arizona, Texas), Mexico",
+    "097.Orchard_Oriole":                  "USA (eastern & central states), Canada, Mexico, Central America (winters)",
+    "098.Scott_Oriole":                    "USA (Texas, Arizona, California), Mexico",
+    "099.Ovenbird":                        "USA (eastern states), Canada — breeds from Georgia to Manitoba",
+    "100.Brown_Pelican":                   "USA (coastal states — California, Florida, Texas), Mexico, Caribbean",
+    "101.White_Pelican":                   "USA, Canada — breeds on lakes in Great Plains, winters on Gulf Coast",
+    "102.Western_Wood_Pewee":              "USA (western states), Canada (British Columbia), Mexico, South America",
+    "103.Sayornis":                        "USA, Canada, Mexico — widespread flycatcher across North America",
+    "104.American_Pipit":                  "USA (Alaska, mountain states), Canada (Arctic)",
+    "105.Whip_poor_Will":                  "USA (eastern states), Canada (Ontario, Quebec), Mexico, Central America",
+    "106.Horned_Puffin":                   "USA (Alaska), Russia, Canada — North Pacific",
+    "107.Common_Raven":                    "USA (western states, Alaska), Canada, UK, northern Europe, Asia",
+    "108.White_necked_Raven":              "USA (Texas, Arizona), Mexico — Chihuahuan and Sonoran Desert",
+    "109.American_Redstart":               "USA (eastern states), Canada — breeds from Georgia to Nova Scotia",
+    "110.Geococcyx":                       "USA (Texas, New Mexico, Arizona, California), Mexico",
+    "111.Loggerhead_Shrike":               "USA, Canada (southern Ontario) — widespread but declining",
+    "112.Great_Grey_Shrike":               "Canada (Arctic), Russia, northern Europe (Scandinavia, Finland)",
+    "113.Baird_Sparrow":                   "USA (Montana, North Dakota), Canada (Manitoba, Saskatchewan)",
+    "114.Black_throated_Sparrow":          "USA (Texas, New Mexico, Arizona, Nevada, California), Mexico",
+    "115.Brewer_Sparrow":                  "USA (western states), Canada (British Columbia, Alberta), Mexico",
+    "116.Chipping_Sparrow":                "USA, Canada — one of the most common sparrows across North America",
+    "117.Clay_colored_Sparrow":            "USA (Great Plains states), Canada (prairies)",
+    "118.House_Sparrow":                   "USA, Canada, UK, Europe, Australia, India — introduced worldwide",
+    "119.Field_Sparrow":                   "USA (eastern & central states) — common from Texas to New England",
+    "120.Fox_Sparrow":                     "USA (western states, Alaska), Canada",
+    "121.Grasshopper_Sparrow":             "USA (central & eastern states), Canada (Ontario), Mexico",
+    "122.Harris_Sparrow":                  "USA (Great Plains — Kansas, Oklahoma, Texas in winter), Canada",
+    "123.Henslow_Sparrow":                 "USA (Midwest — Ohio, Indiana, Illinois, New York) — rare and declining",
+    "124.Le_Conte_Sparrow":                "USA (Great Plains, Southeast), Canada (prairies)",
+    "125.Lincoln_Sparrow":                 "USA, Canada (breeds), Mexico, Central America (winters)",
+    "126.Nelson_Sharp_tailed_Sparrow":     "USA (Atlantic coast — Maine to Virginia), Canada (Maritime provinces)",
+    "127.Savannah_Sparrow":                "USA, Canada — one of the most widespread sparrows in North America",
+    "128.Seaside_Sparrow":                 "USA (Atlantic & Gulf coast — Virginia to Texas)",
+    "129.Song_Sparrow":                    "USA, Canada — extremely common and widespread across North America",
+    "130.Tree_Sparrow":                    "Canada (Arctic, boreal), USA (northern states in winter)",
+    "131.Vesper_Sparrow":                  "USA (western & central states), Canada (prairies), Mexico (winters)",
+    "132.White_crowned_Sparrow":           "USA, Canada — widespread migrant, breeds in Canada and mountain west",
+    "133.White_throated_Sparrow":          "USA (eastern states in winter), Canada (breeds)",
+    "134.Cape_Glossy_Starling":            "Kenya, Tanzania, Uganda, Ethiopia, Somalia — East Africa savanna",
+    "135.Bank_Swallow":                    "USA, Canada (breeds), South America (winters)",
+    "136.Barn_Swallow":                    "USA, Canada (breeds), South America, Africa (winters)",
+    "137.Cliff_Swallow":                   "USA, Canada (breeds), South America (winters)",
+    "138.Tree_Swallow":                    "USA, Canada (breeds), Mexico, Central America (winters)",
+    "139.Scarlet_Tanager":                 "USA (eastern states), Canada (Ontario), South America (winters)",
+    "140.Summer_Tanager":                  "USA (southern states — Georgia, Texas, Carolina), Mexico, South America",
+    "141.Artic_Tern":                      "Canada, USA (Alaska), UK, Norway — longest migration on Earth",
+    "142.Black_Tern":                      "USA (Midwest lakes), Canada, Europe",
+    "143.Caspian_Tern":                    "USA (Great Lakes, Gulf Coast), Canada, Europe, Africa, Australia",
+    "144.Common_Tern":                     "USA, Canada, UK, Europe — widespread across North Atlantic coasts",
+    "145.Elegant_Tern":                    "USA (California coast), Mexico (Baja California)",
+    "146.Forsters_Tern":                   "USA, Canada — breeds in Great Plains marshes, winters on both coasts",
+    "147.Least_Tern":                      "USA (Atlantic & Gulf coast, river valleys), Mexico, Caribbean",
+    "148.Green_tailed_Towhee":             "USA (western mountain states — Colorado, Utah, California), Mexico",
+    "149.Brown_Thrasher":                  "USA (eastern & central states), Canada (Ontario)",
+    "150.Sage_Thrasher":                   "USA (Great Basin — Nevada, Idaho, Wyoming, Oregon), Mexico (winters)",
+    "151.Black_capped_Vireo":              "USA (Texas, Oklahoma only), Mexico (winters) — endangered species",
+    "152.Blue_headed_Vireo":               "USA (eastern states), Canada (Ontario, Quebec), Central America",
+    "153.Philadelphia_Vireo":              "USA (northeastern states), Canada (Ontario to Alberta), Central America",
+    "154.Red_eyed_Vireo":                  "USA, Canada — one of the most common breeding birds in eastern North America",
+    "155.Warbling_Vireo":                  "USA, Canada (breeds), Mexico, Central America (winters)",
+    "156.White_eyed_Vireo":                "USA (southeastern & eastern states), Mexico, Central America (winters)",
+    "157.Yellow_throated_Vireo":           "USA (eastern states), Canada (Ontario), South America (winters)",
+    "158.Bay_breasted_Warbler":            "Canada (boreal — Ontario to Newfoundland), USA (eastern states)",
+    "159.Black_and_white_Warbler":         "USA (eastern states), Canada",
+    "160.Black_throated_Blue_Warbler":     "USA (eastern mountain states — Appalachians), Canada, Caribbean",
+    "161.Blue_winged_Warbler":             "USA (eastern states — Ohio, Indiana, New York), Mexico, Central America",
+    "162.Canada_Warbler":                  "USA (northeastern states), Canada (Ontario to Nova Scotia), South America",
+    "163.Cape_May_Warbler":                "Canada (boreal — Ontario, Quebec, Manitoba), USA (eastern states)",
+    "164.Cerulean_Warbler":                "USA (Appalachians, Midwest), Canada (Ontario), South America (winters)",
+    "165.Chestnut_sided_Warbler":          "USA (northeastern states), Canada (Ontario, Quebec), Central America",
+    "166.Golden_winged_Warbler":           "USA (Appalachians, Great Lakes region), Canada, Central America",
+    "167.Hooded_Warbler":                  "USA (eastern states — Georgia, Virginia, Tennessee), Mexico",
+    "168.Kentucky_Warbler":                "USA (southeastern states — Kentucky, Tennessee, Arkansas), Central America",
+    "169.Magnolia_Warbler":                "Canada (boreal — Ontario to Nova Scotia), USA (eastern states)",
+    "170.Mourning_Warbler":                "Canada (Ontario to Manitoba), USA (northeastern states), Central America",
+    "171.Myrtle_Warbler":                  "USA, Canada — one of the most common warblers, breeds across Canada",
+    "172.Nashville_Warbler":               "USA (northeastern & western states), Canada, Mexico, Central America",
+    "173.Orange_crowned_Warbler":          "USA (western states), Canada (British Columbia, Alberta), Mexico",
+    "174.Palm_Warbler":                    "Canada (boreal bogs — Ontario to Newfoundland), USA (Florida in winter)",
+    "175.Pine_Warbler":                    "USA (southeastern states — Florida, Georgia, Texas, Carolina)",
+    "176.Prairie_Warbler":                 "USA (eastern states — Michigan, Ohio, New Jersey, Florida), Caribbean",
+    "177.Prothonotary_Warbler":            "USA (southeastern states — Louisiana, Mississippi, Tennessee, Virginia)",
+    "178.Swainson_Warbler":                "USA (southeastern states — Arkansas, Louisiana, South Carolina)",
+    "179.Tennessee_Warbler":               "Canada (boreal — Ontario to Alberta), USA (eastern states)",
+    "180.Wilson_Warbler":                  "USA (western states, Alaska), Canada (widespread), Mexico",
+    "181.Worm_eating_Warbler":             "USA (eastern states — Pennsylvania, Maryland, Ohio, Georgia)",
+    "182.Yellow_Warbler":                  "USA, Canada — most widespread warbler in North America",
+    "183.Northern_Waterthrush":            "USA (northeastern states), Canada (widespread boreal), Central America",
+    "184.Louisiana_Waterthrush":           "USA (eastern states — Pennsylvania to Georgia, west to Kansas)",
+    "185.Bohemian_Waxwing":                "Canada (boreal — British Columbia to Manitoba), USA (northern states)",
+    "186.Cedar_Waxwing":                   "USA, Canada — very common, found across all of North America year-round",
+    "187.American_Three_toed_Woodpecker":  "USA (Alaska, mountain west), Canada (boreal)",
+    "188.Pileated_Woodpecker":             "USA (eastern states, Pacific Northwest), Canada",
+    "189.Red_bellied_Woodpecker":          "USA (eastern states) — very common from Florida to New York to Texas",
+    "190.Red_cockaded_Woodpecker":         "USA (southeastern states — North Carolina to Texas) — endangered",
+    "191.Red_headed_Woodpecker":           "USA (eastern & central states), Canada (Ontario, Manitoba)",
+    "192.Downy_Woodpecker":                "USA, Canada — smallest and most common woodpecker in North America",
+    "193.Bewick_Wren":                     "USA (western & southern states — California, Texas, Oregon), Mexico",
+    "194.Cactus_Wren":                     "USA (Arizona, California, New Mexico, Texas), Mexico — Sonoran Desert",
+    "195.Carolina_Wren":                   "USA (eastern & southeastern states)",
+    "196.House_Wren":                      "USA, Canada (breeds), South America (winters)",
+    "197.Marsh_Wren":                      "USA, Canada — freshwater marshes across North America",
+    "198.Rock_Wren":                       "USA (western states — Colorado, Utah, California, Arizona), Mexico",
+    "199.Winter_Wren":                     "USA (Pacific Northwest, Appalachians), Canada, UK, Europe, Asia",
+    "200.Common_Yellowthroat":             "USA, Canada — one of the most widespread warblers in North America",
 }
 
+# ── Look-alike species ───────────────────────────────────────
+# Partial by design: only visually confusable pairs.
 SIMILAR_SPECIES = {
-    "Black footed Albatross":    ("Laysan Albatross",         "check the face — Black-footed has a dark face, Laysan has a white face"),
-    "Laysan Albatross":          ("Black footed Albatross",   "check the face — Laysan has a white face, Black-footed has a dark face"),
-    "Herring Gull":              ("Ring billed Gull",         "check the bill — Herring Gull has a red spot, Ring-billed has a black ring"),
-    "Ring billed Gull":          ("Herring Gull",             "check the bill — Ring-billed has a black ring, Herring has a red spot"),
-    "Ruby throated Hummingbird": ("Rufous Hummingbird",       "check the back — Ruby-throated is green-backed, Rufous has orange-brown back"),
-    "Rufous Hummingbird":        ("Ruby throated Hummingbird","check the back — Rufous is orange-brown, Ruby-throated is metallic green"),
-    "Barn Swallow":              ("Cliff Swallow",            "check the tail — Barn Swallow has a deep forked tail, Cliff has a square tail"),
-    "Cliff Swallow":             ("Barn Swallow",             "check the tail — Cliff has a square tail, Barn Swallow has a deep fork"),
-    "Downy Woodpecker":          ("Pileated Woodpecker",      "check the size — Downy is sparrow-sized, Pileated is crow-sized"),
-    "Baltimore Oriole":          ("Orchard Oriole",           "check the color — Baltimore is bright orange, Orchard is darker chestnut"),
-    "American Crow":             ("Common Raven",             "check the size & tail — Crow is smaller with fan tail, Raven has wedge tail"),
-    "Scarlet Tanager":           ("Summer Tanager",           "check the wings — Scarlet has black wings, Summer Tanager is all red"),
-    "Cedar Waxwing":             ("Bohemian Waxwing",         "check the belly — Cedar has a yellow belly, Bohemian has rusty undertail"),
-    "Indigo Bunting":            ("Lazuli Bunting",           "check the breast — Indigo is all blue, Lazuli has a rusty-orange breast"),
-    "Song Sparrow":              ("Savannah Sparrow",         "check the breast — Song Sparrow has a central spot, Savannah has streaks"),
-    "Blue Jay":                  ("Florida Jay",              "check the crest — Blue Jay has a crest, Florida Jay has no crest"),
+    "001.Black_footed_Albatross":          ("Laysan Albatross", "check the face — Black-footed has a dark face, Laysan has a white face"),
+    "002.Laysan_Albatross":                ("Black footed Albatross", "check the face — Laysan has a white face, Black-footed has a dark face"),
+    "014.Indigo_Bunting":                  ("Lazuli Bunting", "check the breast — Indigo is all blue, Lazuli has a rusty-orange breast"),
+    "029.American_Crow":                   ("Common Raven", "check the size & tail — Crow is smaller with fan tail, Raven has wedge tail"),
+    "062.Herring_Gull":                    ("Ring billed Gull", "check the bill — Herring Gull has a red spot, Ring-billed has a black ring"),
+    "064.Ring_billed_Gull":                ("Herring Gull", "check the bill — Ring-billed has a black ring, Herring has a red spot"),
+    "068.Ruby_throated_Hummingbird":       ("Rufous Hummingbird", "check the back — Ruby-throated is green-backed, Rufous has orange-brown back"),
+    "069.Rufous_Hummingbird":              ("Ruby throated Hummingbird", "check the back — Rufous is orange-brown, Ruby-throated is metallic green"),
+    "073.Blue_Jay":                        ("Florida Jay", "check the crest — Blue Jay has a crest, Florida Jay has no crest"),
+    "095.Baltimore_Oriole":                ("Orchard Oriole", "check the color — Baltimore is bright orange, Orchard is darker chestnut"),
+    "129.Song_Sparrow":                    ("Savannah Sparrow", "check the breast — Song Sparrow has a central spot, Savannah has streaks"),
+    "136.Barn_Swallow":                    ("Cliff Swallow", "check the tail — Barn Swallow has a deep forked tail, Cliff has a square tail"),
+    "137.Cliff_Swallow":                   ("Barn Swallow", "check the tail — Cliff has a square tail, Barn Swallow has a deep fork"),
+    "139.Scarlet_Tanager":                 ("Summer Tanager", "check the wings — Scarlet has black wings, Summer Tanager is all red"),
+    "186.Cedar_Waxwing":                   ("Bohemian Waxwing", "check the belly — Cedar has a yellow belly, Bohemian has rusty undertail"),
+    "192.Downy_Woodpecker":                ("Pileated Woodpecker", "check the size — Downy is sparrow-sized, Pileated is crow-sized"),
 }
 
+# ── Migration ────────────────────────────────────────────────
 MIGRATION_MAP = {
-    "Indigo Bunting":                "Breeds eastern & central USA (May-Aug) → winters in Mexico, Cuba & Central America (Sep-Apr). Navigates by stars at night",
-    "Barn Swallow":                  "Breeds USA & Canada (Apr-Aug) → migrates to Argentina & Brazil (Sep-Mar)",
-    "Ruby throated Hummingbird":     "Breeds eastern USA & Canada (May-Aug) → crosses Gulf of Mexico to winter in Mexico & Central America",
-    "Rufous Hummingbird":            "Breeds Pacific Northwest & Alaska (Apr-Jul) → winters in Mexico. Longest hummingbird migration — 3,900 miles",
-    "Baltimore Oriole":              "Breeds eastern USA & Canada (May-Aug) → winters in Central & South America (Sep-Apr)",
-    "Scarlet Tanager":               "Breeds eastern USA & Canada → winters in Colombia, Ecuador & Peru (Sep-Apr)",
-    "Bobolink":                      "Breeds USA & Canada prairies → migrates 12,000 miles to Argentina — one of longest songbird migrations",
-    "Arctic Tern":                   "Breeds Arctic Canada & Alaska → winters in Antarctic. Longest migration on Earth — 70,000 km/year",
-    "Dark eyed Junco":               "Breeds Canada & mountain USA → winters across all of USA. Called the snowbird",
-    "Yellow Warbler":                "Breeds all of USA & Canada → winters in Mexico, Central & South America",
-    "Cedar Waxwing":                 "Nomadic — follows berry crops. Northern birds move south in winter",
-    "White throated Sparrow":        "Breeds Canada → winters in eastern & southern USA. Common winter feeder bird",
-    "White crowned Sparrow":         "Breeds Arctic Canada & Alaska → winters across southern USA & Mexico",
-    "American Redstart":             "Breeds eastern USA & Canada → winters in Caribbean, Mexico & South America",
-    "Common Yellowthroat":           "Northern birds migrate to Caribbean & Central America. Southern birds stay year-round",
-    "Mallard":                       "Year-round in most of USA. Northern Canada birds migrate to southern USA in winter",
-    "American Crow":                 "Year-round across most of North America. Northern birds may move south slightly",
-    "Downy Woodpecker":              "Year-round resident across North America. Does not migrate",
-    "Cardinal":                      "Year-round resident across eastern & southern USA. Does not migrate",
-    "Blue Jay":                      "Mostly year-round but northern populations move south in winter in large flocks",
-    "Song Sparrow":                  "Year-round across most of USA. Northern Canada birds migrate south in winter",
-    "House Sparrow":                 "Year-round resident worldwide. Does not migrate — introduced species",
-    "Mourning Warbler":              "Breeds Canada & northeastern USA → winters in Costa Rica, Colombia & Venezuela",
-    "Magnolia Warbler":              "Breeds boreal Canada → winters in Caribbean & Central America",
-    "Black and white Warbler":       "Breeds eastern USA & Canada → winters in Florida, Caribbean & South America",
-    "Ovenbird":                      "Breeds eastern USA & Canada → winters in Caribbean, Mexico & Central America",
-    "Nighthawk":                     "Breeds USA & Canada → migrates to South America (Bolivia, Argentina). One of longest migrations",
-    "Cliff Swallow":                 "Breeds USA & Canada (Apr-Aug) → winters in Argentina (Sep-Mar)",
-    "Tree Swallow":                  "Breeds USA & Canada (Apr-Aug) → winters in Florida, Gulf Coast & Central America",
-    "Bank Swallow":                  "Breeds USA & Canada → migrates to Peru, Bolivia, Brazil (Sep-Apr)",
-    "Horned Puffin":                 "Breeds Alaskan sea cliffs (May-Aug) → winters in open North Pacific Ocean",
-    "Pacific Loon":                  "Breeds Arctic Canada & Alaska → winters along Pacific coast to California",
-    "Bohemian Waxwing":              "Breeds boreal Canada & Alaska → irruptive winter visitor to northern USA. Appears in large flocks following berry crops",
+    "001.Black_footed_Albatross":          "Year-round in North Pacific Ocean. Breeds on Hawaiian Islands (Dec–Jul), roams Pacific rest of year",
+    "002.Laysan_Albatross":                "Year-round in North Pacific. Breeds on Midway Atoll & Hawaii (Nov–Jul), roams North Pacific rest of year",
+    "003.Sooty_Albatross":                 "Year-round in South Atlantic & Indian Ocean. Breeds on Tristan da Cunha & South Georgia islands",
+    "004.Groove_billed_Ani":               "Year-round resident in Mexico & Central America. Some move to southern Texas in summer (Apr–Sep)",
+    "005.Crested_Auklet":                  "Breeds on Aleutian Islands & Bering Sea (May–Aug) → winters in open North Pacific Ocean",
+    "006.Least_Auklet":                    "Breeds on St. Lawrence & Pribilof Islands Alaska (Jun–Aug) → winters in North Pacific",
+    "007.Parakeet_Auklet":                 "Breeds on Alaskan & Russian islands (May–Aug) → winters in open North Pacific Ocean",
+    "008.Rhinoceros_Auklet":               "Breeds on Pacific coast islands (Apr–Aug) → winters offshore in North Pacific",
+    "009.Brewer_Blackbird":                "Year-round in western USA. Northern Canada birds migrate south to California & Mexico (Oct–Mar)",
+    "010.Red_winged_Blackbird":            "Year-round across most of USA. Northern Canada birds migrate south to southern USA (Oct–Apr)",
+    "011.Rusty_Blackbird":                 "Breeds in Alaska & boreal Canada (May–Aug) → winters in southeastern USA (Sep–Apr)",
+    "012.Yellow_headed_Blackbird":         "Breeds in Great Plains marshes USA & Canada (May–Aug) → winters in Mexico & southwestern USA",
+    "013.Bobolink":                        "Breeds in USA & Canada prairies (May–Aug) → migrates 12,000 miles to Argentina & Bolivia (Sep–Apr). One of the longest migrations of any songbird",
+    "014.Indigo_Bunting":                  "Breeds in eastern & central USA (May–Aug) → winters in Mexico, Cuba & Central America (Sep–Apr). Navigates by stars at night",
+    "015.Lazuli_Bunting":                  "Breeds in western USA & Canada (May–Aug) → winters in western Mexico (Sep–Apr)",
+    "016.Painted_Bunting":                 "Breeds in southern USA — Texas, Louisiana, Florida (Apr–Aug) → winters in Florida, Caribbean & Central America",
+    "017.Cardinal":                        "Year-round resident across eastern & southern USA. Does not migrate",
+    "018.Spotted_Catbird":                 "Year-round resident in Queensland & New South Wales, Australia. Short local movements only",
+    "019.Gray_Catbird":                    "Breeds in USA & Canada (May–Aug) → winters in Florida, Caribbean & Central America (Sep–Apr)",
+    "020.Yellow_breasted_Chat":            "Breeds across USA & Canada (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "021.Eastern_Towhee":                  "Year-round in southeastern USA. Northern birds migrate south in winter (Oct–Mar)",
+    "022.Chuck_will_Widow":                "Breeds in southeastern USA (Apr–Aug) → winters in Caribbean & Central America (Sep–Mar)",
+    "023.Brandt_Cormorant":                "Year-round on Pacific coast from Alaska to Baja California. Short local movements",
+    "024.Red_faced_Cormorant":             "Year-round resident on Aleutian Islands & Kodiak, Alaska. Does not migrate",
+    "025.Pelagic_Cormorant":               "Year-round on Pacific coast. Some northernmost birds move south slightly in winter",
+    "026.Bronzed_Cowbird":                 "Year-round in Mexico & Central America. Moves into southern Texas & Arizona (Mar–Sep)",
+    "027.Shiny_Cowbird":                   "Year-round across South America & Caribbean. Expanding northward into USA",
+    "028.Brown_Creeper":                   "Year-round in mature forests across North America. Mountain birds move to lower elevations in winter",
+    "029.American_Crow":                   "Year-round across most of USA. Northern birds may move south in harsh winters. Highly intelligent",
+    "030.Fish_Crow":                       "Year-round on Atlantic & Gulf coasts eastern USA. Short local movements only",
+    "031.Black_billed_Cuckoo":             "Breeds in eastern USA & Canada (May–Aug) → winters in South America — Colombia to Bolivia (Sep–Apr)",
+    "033.Yellow_billed_Cuckoo":            "Breeds across USA & Canada (May–Aug) → winters in South America (Aug–Apr). Famous for calling just before rainstorms",
+    "037.Acadian_Flycatcher":              "Breeds in eastern USA (May–Aug) → winters in Colombia, Ecuador & Central America (Sep–Apr)",
+    "038.Great_Crested_Flycatcher":        "Breeds in eastern USA & Canada (May–Aug) → winters in Florida, Caribbean & South America (Sep–Apr)",
+    "039.Least_Flycatcher":                "Breeds in northeastern USA & Canada (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "040.Olive_sided_Flycatcher":          "Breeds in western USA, Alaska & boreal Canada (Jun–Aug) → winters in Andes of South America — Peru, Bolivia (Sep–May). One of the longest Flycatcher migrations",
+    "043.Yellow_bellied_Flycatcher":       "Breeds in boreal Canada & northeastern USA (Jun–Aug) → winters in Mexico & Central America (Sep–May)",
+    "046.Gadwall":                         "Breeds in Great Plains USA & Canada (May–Aug) → winters across southern USA, Mexico & Caribbean (Oct–Mar)",
+    "050.Eared_Grebe":                     "Breeds on western USA & Canada lakes (May–Aug) → winters on Pacific coast & Gulf of Mexico (Sep–Apr)",
+    "051.Horned_Grebe":                    "Breeds in Alaska, Canada & northern Europe (May–Aug) → winters on both USA coasts (Sep–Apr)",
+    "052.Pied_billed_Grebe":               "Year-round across most of USA. Northern birds migrate south in winter (Oct–Mar)",
+    "053.Western_Grebe":                   "Breeds on inland lakes western USA & Canada (Apr–Aug) → winters on Pacific coast (Sep–Mar)",
+    "058.Pigeon_Guillemot":                "Year-round on North Pacific coast. Short offshore movements in winter",
+    "059.California_Gull":                 "Breeds inland at Great Basin lakes (Apr–Aug) → winters on California & Pacific coast (Sep–Mar)",
+    "060.Glaucous_winged_Gull":            "Year-round on Pacific Northwest coast. Some move south to California in winter",
+    "061.Heermann_Gull":                   "Breeds on Isla Raza Mexico (Jan–Jun) → moves north to California & Oregon coast (Jul–Nov) — reverse migration",
+    "062.Herring_Gull":                    "Breeds in Canada & northern USA (Apr–Aug) → winters across all USA coasts (Sep–Mar)",
+    "063.Ivory_Gull":                      "Year-round in high Arctic. Moves south only when sea ice forces it — rarely seen in USA",
+    "064.Ring_billed_Gull":                "Breeds in Canada & northern USA (Apr–Aug) → winters across all of USA (Sep–Mar). Very common in parking lots!",
+    "065.Slaty_backed_Gull":               "Year-round in eastern Russia & Japan. Rare winter visitor to Alaska & Pacific coast",
+    "066.Western_Gull":                    "Year-round on California, Oregon & Washington coast. Does not migrate far",
+    "067.Anna_Hummingbird":                "Year-round on Pacific coast — one of very few hummingbirds that does not migrate south. Stays in California & Oregon all winter",
+    "068.Ruby_throated_Hummingbird":       "Breeds in eastern USA & Canada (Apr–Aug) → crosses Gulf of Mexico non-stop to winter in Mexico & Central America (Sep–Apr). Incredible 500-mile non-stop ocean crossing",
+    "069.Rufous_Hummingbird":              "Breeds in Pacific Northwest & Alaska (Apr–Jul) → migrates south through Rocky Mountains to winter in Mexico (Aug–Mar). Longest migration of any hummingbird — 3,900 miles",
+    "070.Green_Violetear":                 "Year-round resident in mountain forests of Mexico & Central America. Short altitudinal movements only",
+    "071.Long_tailed_Jaeger":              "Breeds on Arctic tundra Canada & Alaska (Jun–Aug) → migrates over ocean to winter in South Atlantic (Sep–May)",
+    "072.Pomarine_Jaeger":                 "Breeds on Arctic tundra (Jun–Aug) → winters off coasts of South America & West Africa (Sep–May). Rarely seen inland",
+    "073.Blue_Jay":                        "Year-round across eastern USA. Some northern birds migrate south in large flocks in autumn — not all individuals migrate",
+    "074.Florida_Jay":                     "Year-round resident in Florida scrub only. Does not migrate at all — one of the most sedentary birds in North America",
+    "075.Green_Jay":                       "Year-round resident in southern Texas & Central America. Does not migrate",
+    "076.Dark_eyed_Junco":                 "Breeds in Canada & mountain USA (May–Aug) → winters across all of USA (Oct–Apr). Called the snowbird — their arrival signals winter coming",
+    "077.Tropical_Kingbird":               "Year-round in Mexico & Central America. Moves into southern Arizona & Texas (Apr–Sep)",
+    "078.Gray_Kingbird":                   "Breeds in Florida & Caribbean (Apr–Aug) → winters in northern South America (Sep–Mar)",
+    "079.Belted_Kingfisher":               "Year-round across most of USA near water. Northern Canada birds move south in winter",
+    "080.Green_Kingfisher":                "Year-round resident in southern Texas, Mexico & Central America. Does not migrate",
+    "081.Pied_Kingfisher":                 "Year-round resident across Africa & South Asia. Does not migrate",
+    "082.Ringed_Kingfisher":               "Year-round in southern Texas, Mexico & South America. Does not migrate",
+    "083.White_breasted_Kingfisher":       "Year-round resident across India & Southeast Asia. Does not migrate",
+    "084.Red_legged_Kittiwake":            "Breeds on Pribilof Islands Alaska (May–Aug) → winters in North Pacific Ocean. Rarely seen on land outside breeding season",
+    "085.Horned_Lark":                     "Year-round across open areas of USA & Canada. Northern birds move south in winter (Oct–Mar)",
+    "086.Pacific_Loon":                    "Breeds on Arctic lakes Canada & Alaska (Jun–Aug) → winters along Pacific coast from Alaska to California (Sep–May)",
+    "087.Mallard":                         "Year-round in most of USA. Northern Canada & Alaska birds migrate south to USA & Mexico in winter (Oct–Mar)",
+    "088.Western_Meadowlark":              "Year-round across western & central USA. Northern Canada birds migrate south in winter (Oct–Mar)",
+    "089.Hooded_Merganser":                "Breeds in forested lakes USA & Canada (Apr–Aug) → winters in southern USA & Mexico (Oct–Mar)",
+    "090.Red_breasted_Merganser":          "Breeds in Arctic & boreal Canada (May–Aug) → winters on both USA coasts (Sep–Apr)",
+    "091.Mockingbird":                     "Year-round across USA & Mexico. Northern birds may move slightly south in harsh winters",
+    "092.Nighthawk":                       "Breeds across USA & Canada (May–Aug) → migrates to South America (Bolivia, Argentina) for winter (Sep–Apr). One of the longest migrations among North American birds",
+    "093.Clark_Nutcracker":                "Year-round in western mountain USA. Short altitudinal movements — moves to lower elevations in winter",
+    "094.White_breasted_Nuthatch":         "Year-round resident across North America. Does not migrate",
+    "095.Baltimore_Oriole":                "Breeds in eastern USA & Canada (May–Aug) → winters in Central America & northern South America (Sep–Apr)",
+    "096.Hooded_Oriole":                   "Breeds in southwestern USA (Apr–Aug) → winters in Mexico (Sep–Mar)",
+    "097.Orchard_Oriole":                  "Breeds in eastern & central USA (May–Aug) → winters in Central America & northern South America (Aug–Apr). Leaves very early — one of first migrants to depart",
+    "098.Scott_Oriole":                    "Breeds in desert southwest USA (Apr–Aug) → winters in Mexico (Sep–Mar)",
+    "099.Ovenbird":                        "Breeds in eastern USA & Canada (May–Aug) → winters in Caribbean, Mexico & Central America (Sep–Apr)",
+    "100.Brown_Pelican":                   "Year-round on USA coasts. Some northern birds move south in winter. Florida birds stay year-round",
+    "101.White_Pelican":                   "Breeds on inland lakes Great Plains (Apr–Aug) → winters on Gulf Coast & Pacific coast (Sep–Mar)",
+    "102.Western_Wood_Pewee":              "Breeds in western USA & Canada (May–Aug) → winters in South America (Bolivia, Peru, Ecuador) (Sep–Apr)",
+    "103.Sayornis":                        "Year-round in southwestern USA & Mexico. Northern birds migrate south in winter (Oct–Mar)",
+    "104.American_Pipit":                  "Breeds on Arctic tundra & mountain tops (Jun–Aug) → winters across southern USA & Mexico (Sep–May)",
+    "105.Whip_poor_Will":                  "Breeds in eastern USA & Canada (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "106.Horned_Puffin":                   "Breeds on Alaskan sea cliffs (May–Aug) → winters in open North Pacific Ocean far from shore (Sep–Apr)",
+    "107.Common_Raven":                    "Year-round resident. Does not migrate. Stays in same territory year-round",
+    "108.White_necked_Raven":              "Year-round resident in desert southwest USA & Mexico. Does not migrate",
+    "109.American_Redstart":               "Breeds in eastern USA & Canada (May–Aug) → winters in Caribbean, Mexico & South America (Sep–Apr)",
+    "110.Geococcyx":                       "Year-round resident in desert southwest USA & Mexico. Does not migrate",
+    "111.Loggerhead_Shrike":               "Year-round in southern USA. Northern birds migrate south in winter (Oct–Mar)",
+    "112.Great_Grey_Shrike":               "Year-round in northern Europe & Russia. Irruptive — moves south into Europe in some winters",
+    "113.Baird_Sparrow":                   "Breeds in Great Plains USA & Canada (May–Aug) → winters in Texas, New Mexico & Mexico (Sep–Apr)",
+    "114.Black_throated_Sparrow":          "Year-round in desert southwest USA & Mexico. Some move to lower elevations in winter",
+    "115.Brewer_Sparrow":                  "Breeds in Great Basin USA & Canada (May–Aug) → winters in Mexico & southwestern USA (Sep–Apr)",
+    "116.Chipping_Sparrow":                "Breeds across USA & Canada (Apr–Aug) → winters in southern USA & Mexico (Sep–Apr)",
+    "117.Clay_colored_Sparrow":            "Breeds in Great Plains Canada & USA (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "118.House_Sparrow":                   "Year-round resident worldwide. Does not migrate — introduced species stays put all year",
+    "119.Field_Sparrow":                   "Year-round in eastern USA. Northern birds move south slightly in winter (Oct–Mar)",
+    "120.Fox_Sparrow":                     "Breeds in Alaska & Canada (May–Aug) → winters in western & southern USA (Oct–Apr)",
+    "121.Grasshopper_Sparrow":             "Breeds in eastern & central USA (May–Aug) → winters in southern USA, Caribbean & Central America",
+    "122.Harris_Sparrow":                  "Breeds in boreal Canada (Jun–Aug) → winters in Great Plains USA — Kansas, Oklahoma, Texas (Sep–Apr)",
+    "123.Henslow_Sparrow":                 "Breeds in Midwest USA (May–Aug) → winters in southeastern USA — Florida, Georgia, Carolina (Sep–Apr)",
+    "124.Le_Conte_Sparrow":                "Breeds in northern Great Plains Canada (Jun–Aug) → winters in southeastern USA (Sep–Apr)",
+    "125.Lincoln_Sparrow":                 "Breeds in Canada & mountain USA (May–Aug) → winters in southern USA & Mexico (Sep–Apr)",
+    "126.Nelson_Sharp_tailed_Sparrow":     "Breeds in Canadian prairies & Atlantic coast marshes (Jun–Aug) → winters on Atlantic & Gulf coast (Sep–Apr)",
+    "127.Savannah_Sparrow":                "Breeds across USA & Canada (Apr–Aug) → winters in southern USA, Mexico & Caribbean (Sep–Apr)",
+    "128.Seaside_Sparrow":                 "Year-round resident in Atlantic & Gulf coast salt marshes. Does not migrate far",
+    "129.Song_Sparrow":                    "Year-round across most of USA. Northern Canada birds migrate south in winter (Oct–Mar)",
+    "130.Tree_Sparrow":                    "Breeds in Arctic Canada & Alaska (Jun–Aug) → winters across northern USA (Oct–Apr)",
+    "131.Vesper_Sparrow":                  "Breeds in western & central USA & Canada (May–Aug) → winters in southern USA & Mexico (Sep–Apr)",
+    "132.White_crowned_Sparrow":           "Breeds in Arctic Canada & Alaska (Jun–Aug) → winters across southern USA & Mexico (Oct–Apr)",
+    "133.White_throated_Sparrow":          "Breeds in boreal Canada (Jun–Aug) → winters in eastern & southern USA (Oct–Apr). Very common winter bird feeder visitor",
+    "134.Cape_Glossy_Starling":            "Year-round resident in East Africa. Short local movements following rainfall & food",
+    "135.Bank_Swallow":                    "Breeds across USA & Canada (May–Aug) → migrates to South America — Peru, Bolivia, Brazil (Sep–Apr)",
+    "136.Barn_Swallow":                    "Breeds across USA & Canada (Apr–Aug) → migrates to Argentina & southern Brazil (Sep–Mar). One of the most widespread migrants in the world",
+    "137.Cliff_Swallow":                   "Breeds across USA & Canada (Apr–Aug) → winters in Argentina (Sep–Mar)",
+    "138.Tree_Swallow":                    "Breeds in USA & Canada (Apr–Aug) → winters in Florida, Gulf Coast & Central America (Sep–Apr)",
+    "139.Scarlet_Tanager":                 "Breeds in eastern USA & Canada (May–Aug) → winters in Colombia, Ecuador & Peru (Sep–Apr)",
+    "140.Summer_Tanager":                  "Breeds in southern USA (Apr–Aug) → winters in Mexico, Central & South America (Sep–Apr)",
+    "141.Artic_Tern":                      "Breeds in Arctic Canada, Alaska & UK (Jun–Aug) → migrates to Antarctic (Sep–May). Longest migration on Earth — up to 70,000 km per year, seeing more daylight than any other creature",
+    "142.Black_Tern":                      "Breeds in Midwest freshwater marshes USA & Canada (May–Aug) → winters off West Africa & northern South America (Sep–Apr)",
+    "143.Caspian_Tern":                    "Breeds on Great Lakes & Gulf Coast (Apr–Aug) → winters on Gulf Coast, Caribbean & northern South America (Sep–Mar)",
+    "144.Common_Tern":                     "Breeds on North Atlantic coasts USA & Canada (May–Aug) → winters off West Africa & South America (Sep–Apr)",
+    "145.Elegant_Tern":                    "Breeds on Isla Raza Mexico (Apr–Jul) → moves north to California coast (Jul–Oct) then winters off Peru & Chile",
+    "146.Forsters_Tern":                   "Breeds in Great Plains marshes USA & Canada (May–Aug) → winters on both USA coasts & Caribbean (Sep–Apr)",
+    "147.Least_Tern":                      "Breeds on USA beaches & river sandbars (May–Aug) → winters off northern South America (Sep–Apr)",
+    "148.Green_tailed_Towhee":             "Breeds in western mountain USA (May–Aug) → winters in Mexico & southwestern USA desert (Sep–Apr)",
+    "149.Brown_Thrasher":                  "Year-round in southeastern USA. Northern birds migrate south in winter (Oct–Mar)",
+    "150.Sage_Thrasher":                   "Breeds in Great Basin USA (Apr–Aug) → winters in Mexico & Chihuahuan Desert (Sep–Mar)",
+    "151.Black_capped_Vireo":              "Breeds in Texas & Oklahoma (Apr–Aug) → winters in western Mexico (Sep–Mar). Endangered species",
+    "152.Blue_headed_Vireo":               "Breeds in eastern USA & Canada (May–Aug) → winters in Florida, Caribbean & Central America (Sep–Apr)",
+    "153.Philadelphia_Vireo":              "Breeds in Canada & northeastern USA (Jun–Aug) → winters in Central America (Sep–May)",
+    "154.Red_eyed_Vireo":                  "Breeds across USA & Canada (May–Aug) → winters in Amazon basin South America (Sep–Apr). Sings more than almost any other bird — up to 20,000 songs per day",
+    "155.Warbling_Vireo":                  "Breeds across USA & Canada (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "156.White_eyed_Vireo":                "Breeds in eastern USA (Apr–Aug) → winters in Florida, Caribbean & Central America (Sep–Apr)",
+    "157.Yellow_throated_Vireo":           "Breeds in eastern USA & Canada (May–Aug) → winters in Colombia, Venezuela & Central America (Sep–Apr)",
+    "158.Bay_breasted_Warbler":            "Breeds in boreal Canada (Jun–Aug) → winters in Panama & northern South America (Sep–May)",
+    "159.Black_and_white_Warbler":         "Breeds in eastern USA & Canada (Apr–Aug) → winters in Florida, Caribbean & South America (Sep–Apr)",
+    "160.Black_throated_Blue_Warbler":     "Breeds in Appalachian mountains & Canada (May–Aug) → winters in Caribbean — Cuba, Jamaica, Haiti (Sep–Apr)",
+    "161.Blue_winged_Warbler":             "Breeds in eastern USA (May–Aug) → winters in Central America (Sep–Apr)",
+    "162.Canada_Warbler":                  "Breeds in northeastern USA & Canada (Jun–Aug) → winters in Colombia, Ecuador & Peru (Sep–May)",
+    "163.Cape_May_Warbler":                "Breeds in boreal Canada (Jun–Aug) → winters in Caribbean islands (Sep–May)",
+    "164.Cerulean_Warbler":                "Breeds in Appalachians & Midwest USA (May–Aug) → winters in Andes of Colombia, Ecuador & Peru (Sep–Apr)",
+    "165.Chestnut_sided_Warbler":          "Breeds in northeastern USA & Canada (May–Aug) → winters in Central America (Sep–Apr)",
+    "166.Golden_winged_Warbler":           "Breeds in Appalachians & Great Lakes (May–Aug) → winters in Central America & Venezuela (Sep–Apr)",
+    "167.Hooded_Warbler":                  "Breeds in eastern USA (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "168.Kentucky_Warbler":                "Breeds in southeastern USA (May–Aug) → winters in Central America & northern South America (Sep–Apr)",
+    "169.Magnolia_Warbler":                "Breeds in boreal Canada (Jun–Aug) → winters in Caribbean & Central America (Sep–May)",
+    "170.Mourning_Warbler":                "Breeds in Canada & northeastern USA (Jun–Aug) → winters in Costa Rica, Colombia & Venezuela (Sep–May)",
+    "171.Myrtle_Warbler":                  "Breeds across Canada (May–Aug) → winters across all of USA — one of the most widespread warblers in winter (Sep–Apr)",
+    "172.Nashville_Warbler":               "Breeds in northeastern & western USA & Canada (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "173.Orange_crowned_Warbler":          "Breeds in western USA & Canada (Apr–Aug) → winters in southern USA & Mexico (Sep–Mar)",
+    "174.Palm_Warbler":                    "Breeds in boreal bogs Canada (Jun–Aug) → winters in Florida & Caribbean (Sep–Apr). Often seen walking on ground wagging its tail",
+    "175.Pine_Warbler":                    "Year-round in southeastern USA pine forests. Northern birds move to southern USA in winter (Oct–Mar)",
+    "176.Prairie_Warbler":                 "Breeds in eastern USA (May–Aug) → winters in Florida, Caribbean & Central America (Sep–Apr)",
+    "177.Prothonotary_Warbler":            "Breeds in southeastern USA swamps (Apr–Aug) → winters in Colombia, Venezuela & Central America (Sep–Apr)",
+    "178.Swainson_Warbler":                "Breeds in southeastern USA (May–Aug) → winters in Caribbean & Yucatan Mexico (Sep–Apr)",
+    "179.Tennessee_Warbler":               "Breeds in boreal Canada (Jun–Aug) → winters in Costa Rica, Colombia & Venezuela (Sep–May)",
+    "180.Wilson_Warbler":                  "Breeds in western USA, Alaska & Canada (May–Aug) → winters in Mexico & Central America (Sep–Apr)",
+    "181.Worm_eating_Warbler":             "Breeds in eastern USA (May–Aug) → winters in Caribbean & Central America (Sep–Apr)",
+    "182.Yellow_Warbler":                  "Breeds across all of USA & Canada (May–Aug) → winters in Mexico, Central & South America (Sep–Apr). Most widespread warbler in North America",
+    "183.Northern_Waterthrush":            "Breeds in boreal Canada & northeastern USA (May–Aug) → winters in Caribbean & northern South America (Sep–Apr)",
+    "184.Louisiana_Waterthrush":           "Breeds in eastern USA (Apr–Aug) → winters in Caribbean & Central America (Aug–Apr). One of earliest spring migrants to arrive",
+    "185.Bohemian_Waxwing":                "Breeds in boreal Canada & Alaska (Jun–Aug) → irruptive winter visitor to northern USA (Oct–Mar). Appears in large flocks unpredictably following berry crops",
+    "186.Cedar_Waxwing":                   "Year-round across USA but nomadic — follows fruit & berry crops. Northern birds move south in winter. Travels in flocks",
+    "187.American_Three_toed_Woodpecker":  "Year-round in Rocky Mountains, Cascades & boreal Canada. Short movements to lower elevations in winter",
+    "188.Pileated_Woodpecker":             "Year-round resident across eastern USA & Pacific Northwest. Does not migrate",
+    "189.Red_bellied_Woodpecker":          "Year-round resident in eastern USA. Does not migrate",
+    "190.Red_cockaded_Woodpecker":         "Year-round resident in southeastern USA pine forests. Does not migrate. Endangered species",
+    "191.Red_headed_Woodpecker":           "Year-round in eastern USA. Northern birds may move south in winter following acorn crops",
+    "192.Downy_Woodpecker":                "Year-round resident across North America. Does not migrate — stays in same territory all year",
+    "193.Bewick_Wren":                     "Year-round in western & southern USA & Mexico. Does not migrate",
+    "194.Cactus_Wren":                     "Year-round resident in Sonoran Desert USA & Mexico. Does not migrate",
+    "195.Carolina_Wren":                   "Year-round resident in eastern USA. Does not migrate — very sensitive to cold winters",
+    "196.House_Wren":                      "Breeds across USA & Canada (Apr–Aug) → winters in southern USA, Mexico & Central America (Sep–Apr)",
+    "197.Marsh_Wren":                      "Year-round on both coasts USA. Interior birds migrate south in winter (Oct–Mar)",
+    "198.Rock_Wren":                       "Year-round in western USA rocky areas. Mountain birds move to lower elevations in winter",
+    "199.Winter_Wren":                     "Breeds in Pacific Northwest, Appalachians & boreal Canada (May–Aug) → winters across eastern USA (Oct–Apr)",
+    "200.Common_Yellowthroat":             "Breeds across USA & Canada (May–Aug) → winters in southern USA, Caribbean & Central America (Sep–Apr)",
 }
+
+# ── Coverage guard ───────────────────────────────────────────
+# A key that is not one of the model's classes is always a bug: it can
+# never be looked up, so it is dead data. Fail hard on that.
+#
+# A *missing* key is a known, tracked gap — 15 CUB species have no
+# hand-written notes — so it warns rather than crashing. Historically
+# this went unnoticed because the tables were keyed against a different
+# 200-species list, leaving 173/200 lookups silently falling through to
+# "Location data not available".
+_unknown_keys = (set(HABITAT_MAP) | set(MIGRATION_MAP)
+                 | set(SIMILAR_SPECIES)) - set(CLASS_NAMES)
+assert not _unknown_keys, (
+    f"{len(_unknown_keys)} lookup key(s) match no model class and can never "
+    f"be reached: {sorted(_unknown_keys)}"
+)
+
+SPECIES_WITHOUT_NOTES = sorted(set(CLASS_NAMES) - set(HABITAT_MAP))
+print(f"✅ Species data — habitat {len(HABITAT_MAP)}/{NUM_SPECIES}, "
+      f"migration {len(MIGRATION_MAP)}/{NUM_SPECIES}, "
+      f"look-alikes {len(SIMILAR_SPECIES)}/{NUM_SPECIES}")
+if SPECIES_WITHOUT_NOTES:
+    print(f"⚠️  {len(SPECIES_WITHOUT_NOTES)} species have no habitat/migration "
+          f"notes yet (e.g. {display_name(SPECIES_WITHOUT_NOTES[0])})")
 
 
 # ════════════════════════════════════════════════════════════
@@ -355,14 +565,15 @@ def predict_bird(image):
     results = []
     for prob, idx in zip(top5.values[0], top5.indices[0]):
         folder_name  = CLASS_NAMES[idx.item()]
-        species_name = folder_name.split(".")[-1].replace("_", " ")
+        species_name = display_name(folder_name)
         habitat      = HABITAT_MAP.get(folder_name, "Location data not available")
         confidence   = prob.item() * 100
-        results.append((species_name, confidence, habitat))
+        results.append((folder_name, species_name, confidence, habitat))
 
-    top_name    = results[0][0]
-    top_conf    = results[0][1]
-    top_habitat = results[0][2]
+    top_folder  = results[0][0]
+    top_name    = results[0][1]
+    top_conf    = results[0][2]
+    top_habitat = results[0][3]
 
     if top_conf < 60:
         conf_msg = f"⚠️  LOW CONFIDENCE ({top_conf:.1f}%) — Try a clearer photo"
@@ -371,8 +582,8 @@ def predict_bird(image):
     else:
         conf_msg = f"✅  HIGH CONFIDENCE ({top_conf:.1f}%) — Very sure"
 
-    similar  = SIMILAR_SPECIES.get(top_name)
-    migration = MIGRATION_MAP.get(top_name, "Migration data not available for this species")
+    similar  = SIMILAR_SPECIES.get(top_folder)
+    migration = MIGRATION_MAP.get(top_folder, "Migration data not available for this species")
 
     output = f"""
 🐦  SPECIES     : {top_name}
@@ -389,7 +600,7 @@ def predict_bird(image):
 {'─'*55}
 TOP 5 PREDICTIONS:
 """
-    for i, (name, conf, habitat) in enumerate(results):
+    for i, (_folder, name, conf, habitat) in enumerate(results):
         marker = " ◀ TOP PICK" if i == 0 else ""
         output += f"\n#{i+1}  {name}  ({conf:.1f}%){marker}\n    📍 {habitat}\n"
 
@@ -676,16 +887,11 @@ def predict_bird_from_audio(audio_path):
         similar   = None
 
         for folder_name in HABITAT_MAP:
-            species_key = folder_name.split(".")[-1].replace("_", " ").lower()
+            species_key = display_name(folder_name).lower()
             if species_key in top_name.lower() or top_name.lower() in species_key:
                 habitat   = HABITAT_MAP[folder_name]
-                migration = MIGRATION_MAP.get(
-                    folder_name.split(".")[-1].replace("_", " "),
-                    "Migration data not available"
-                )
-                similar = SIMILAR_SPECIES.get(
-                    folder_name.split(".")[-1].replace("_", " ")
-                )
+                migration = MIGRATION_MAP.get(folder_name, "Migration data not available")
+                similar   = SIMILAR_SPECIES.get(folder_name)
                 break
 
         output = f"""
@@ -972,15 +1178,15 @@ with gr.Blocks(title="🐦 Bird Species Identifier") as app:
     gr.HTML(DOTFIELD_JS)
 
     # ── Hero ──
-    gr.HTML("""
+    gr.HTML(f"""
     <div class="hero-wrap">
       <h1>🐦 Bird Species Identifier</h1>
-      <p>AI-powered recognition · EfficientNetV2-S · 200 species</p>
+      <p>AI-powered recognition · EfficientNetV2-S · {NUM_SPECIES} species</p>
       <div class="pill-row">
         <span class="pill-item">🧠 Model <strong>EfficientNetV2-S</strong></span>
-        <span class="pill-item">🦜 Species <strong>200</strong></span>
+        <span class="pill-item">🦜 Species <strong>{NUM_SPECIES}</strong></span>
         <span class="pill-item">📷 Input <strong>380×380 px</strong></span>
-        <span class="pill-item">⚡ Device <strong>CPU / CUDA</strong></span>
+        <span class="pill-item">⚡ Device <strong>{DEVICE_LABEL}</strong></span>
       </div>
     </div>
     """)
@@ -1053,473 +1259,3 @@ with gr.Blocks(title="🐦 Bird Species Identifier") as app:
 print("\n✅ Starting Bird Identifier App...")
 print("   Open in browser: http://127.0.0.1:7860\n")
 app.launch(theme=BIRD_THEME, css=CUSTOM_CSS, share=False)
-
-_DEAD_CODE = """
-.gradio-container { background: transparent !important; max-width: 100% !important; padding: 0 !important; }
-footer, .footer, .built-with, #footer, .svelte-1gfkn6j { display: none !important; }
-.gr-prose h2 { display: none !important; }
-
-/* ── Canvas ── */
-#dotfield-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-
-/* ── Offscreen hidden Gradio components ── */
-#hidden-backend {
-    position: absolute !important;
-    left: -99999px !important;
-    width: 1px !important; height: 1px !important;
-    overflow: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-/* ── Custom App Shell ── */
-#bird-app {
-    position: relative; z-index: 10;
-    max-width: 1060px; margin: 0 auto;
-    padding: 0 20px 60px;
-}
-
-/* ── Hero ── */
-.hero {
-    text-align: center;
-    padding: 52px 0 36px;
-}
-.hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(2rem, 4.5vw, 3rem);
-    font-weight: 700;
-    background: linear-gradient(135deg, #a855f7 0%, #c084fc 50%, #e879f9 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    line-height: 1.2; margin-bottom: 12px;
-}
-.hero-sub { font-size: 0.95rem; color: #9ca3af; letter-spacing: 0.02em; }
-.stat-pills { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
-.stat-pill {
-    background: rgba(168,85,247,0.08);
-    border: 1px solid rgba(168,85,247,0.22);
-    border-radius: 50px; padding: 6px 16px;
-    font-size: 0.77rem; color: #c4b5fd;
-    backdrop-filter: blur(8px);
-}
-.stat-pill b { color: #a855f7; }
-
-/* ── Tabs ── */
-.tab-bar {
-    display: flex; gap: 4px;
-    background: rgba(168,85,247,0.06);
-    border: 1px solid rgba(168,85,247,0.15);
-    border-bottom: none;
-    border-radius: 14px 14px 0 0;
-    padding: 8px 8px 0;
-    backdrop-filter: blur(12px);
-}
-.tab-btn {
-    flex: 1; padding: 10px 20px;
-    background: transparent; border: none;
-    border-radius: 10px 10px 0 0;
-    color: #6b7280; font-size: 0.88rem; font-weight: 500;
-    cursor: pointer; transition: all 0.2s;
-    font-family: 'Inter', sans-serif;
-}
-.tab-btn:hover { color: #c084fc; background: rgba(168,85,247,0.08); }
-.tab-btn.active { color: #c084fc; background: rgba(168,85,247,0.13); border-bottom: 2px solid #a855f7; }
-
-/* ── Tab Panel ── */
-.tab-panel {
-    display: none;
-    background: rgba(18,15,23,0.72);
-    backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
-    border: 1px solid rgba(168,85,247,0.12);
-    border-top: none; border-radius: 0 0 16px 16px;
-    padding: 32px;
-}
-.tab-panel.active { display: block; }
-
-/* ── Two-column layout ── */
-.panel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-@media (max-width: 720px) { .panel-row { grid-template-columns: 1fr; } }
-
-/* ── Upload Zone ── */
-.upload-zone {
-    border: 2px dashed rgba(168,85,247,0.35);
-    border-radius: 14px;
-    background: rgba(168,85,247,0.04);
-    min-height: 240px; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    cursor: pointer; transition: all 0.25s; position: relative;
-    overflow: hidden;
-}
-.upload-zone:hover, .upload-zone.drag-over {
-    border-color: #a855f7;
-    background: rgba(168,85,247,0.1);
-    box-shadow: 0 0 28px rgba(168,85,247,0.2);
-}
-.upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.upload-icon { font-size: 2.4rem; margin-bottom: 10px; }
-.upload-label { font-size: 0.88rem; color: #9ca3af; text-align: center; }
-.upload-label b { color: #c084fc; }
-.preview-img { max-width: 100%; max-height: 220px; border-radius: 10px; object-fit: contain; display: none; }
-
-/* ── Submit Button ── */
-.submit-btn {
-    width: 100%; margin-top: 14px; padding: 13px;
-    background: linear-gradient(135deg, #7c3aed, #a855f7, #c026d3);
-    border: none; border-radius: 10px;
-    color: #fff; font-size: 0.92rem; font-weight: 600;
-    cursor: pointer; transition: all 0.25s;
-    font-family: 'Inter', sans-serif;
-    box-shadow: 0 4px 22px rgba(168,85,247,0.35);
-    letter-spacing: 0.02em;
-}
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(168,85,247,0.5); }
-.submit-btn:active { transform: translateY(0); }
-.submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
-
-/* ── Results Card ── */
-.results-card {
-    background: rgba(18,15,23,0.6);
-    border: 1px solid rgba(168,85,247,0.12);
-    border-radius: 14px; padding: 20px;
-    min-height: 240px;
-}
-.results-label { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
-.results-text { font-size: 0.84rem; color: #d1d5db; line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
-.results-text.placeholder { color: #4b5563; font-style: italic; }
-
-/* ── Loading Spinner ── */
-.spinner {
-    display: none; width: 32px; height: 32px; margin: 60px auto;
-    border: 3px solid rgba(168,85,247,0.15);
-    border-top-color: #a855f7;
-    border-radius: 50%; animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── CAM Output Image ── */
-.cam-result-img { width: 100%; border-radius: 12px; display: none; margin-top: 12px; }
-
-/* ── Section label ── */
-.sec-label { font-size: 0.78rem; color: #9ca3af; margin-bottom: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
-
-/* ── Footer ── */
-.custom-footer {
-    text-align: center; margin-top: 32px;
-    color: #374151; font-size: 0.76rem;
-    border-top: 1px solid rgba(168,85,247,0.08); padding-top: 20px;
-}
-.custom-footer a { color: #7c3aed; text-decoration: none; }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.3); border-radius: 3px; }
-"""
-
-BIRD_THEME = gr.themes.Base(
-    primary_hue=gr.themes.colors.purple,
-    neutral_hue=gr.themes.colors.slate,
-    font=gr.themes.GoogleFont("Inter"),
-).set(
-    body_background_fill="#120F17",
-    body_background_fill_dark="#120F17",
-    block_background_fill="transparent",
-    block_background_fill_dark="transparent",
-    input_background_fill="rgba(18,15,23,0.8)",
-    input_background_fill_dark="rgba(18,15,23,0.8)",
-)
-
-FRONTEND_HTML = """
-<!-- DotField Canvas -->
-<canvas id="dotfield-canvas"></canvas>
-
-<!-- Custom App Shell -->
-<div id="bird-app">
-
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-title">🐦 Bird Species Identifier</div>
-    <div class="hero-sub">AI-powered recognition · EfficientNetV2-S · 200 species</div>
-    <div class="stat-pills">
-      <span class="stat-pill">🧠 Model <b>EfficientNetV2-S</b></span>
-      <span class="stat-pill">🦜 Species <b>200</b></span>
-      <span class="stat-pill">📷 Input <b>380×380px</b></span>
-      <span class="stat-pill">⚡ Device <b>CPU/CUDA</b></span>
-    </div>
-  </div>
-
-  <!-- Tab Bar -->
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('identify',this)">🔍&nbsp; Identify Bird</button>
-    <button class="tab-btn"       onclick="switchTab('gradcam',this)">🔥&nbsp; Grad-CAM</button>
-  </div>
-
-  <!-- Tab: Identify -->
-  <div class="tab-panel active" id="tab-identify">
-    <div class="panel-row">
-      <div>
-        <div class="sec-label">Upload Bird Photo</div>
-        <div class="upload-zone" id="upload-zone-id"
-             ondragover="ev.preventDefault();this.classList.add('drag-over')"
-             ondragleave="this.classList.remove('drag-over')"
-             ondrop="handleDrop(event,'id')">
-          <input type="file" accept="image/*" id="file-id" onchange="handleFile(this,'id')">
-          <div id="upload-ui-id">
-            <div class="upload-icon">🖼️</div>
-            <div class="upload-label">Drag &amp; drop or <b>click to browse</b><br><span style="font-size:0.72rem;color:#4b5563;">JPG · PNG · WEBP</span></div>
-          </div>
-          <img class="preview-img" id="preview-id" alt="preview">
-        </div>
-        <button class="submit-btn" id="btn-id" onclick="runIdentify()" disabled>🔍&nbsp; Identify Species</button>
-      </div>
-      <div>
-        <div class="sec-label">Results</div>
-        <div class="results-card">
-          <div class="spinner" id="spinner-id"></div>
-          <div class="results-text placeholder" id="result-id">Upload a photo and click Identify to see the species, habitat, migration info and top 5 predictions.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tab: Grad-CAM -->
-  <div class="tab-panel" id="tab-gradcam">
-    <div class="panel-row">
-      <div>
-        <div class="sec-label">Upload Bird Photo</div>
-        <div class="upload-zone" id="upload-zone-cam"
-             ondragover="event.preventDefault();this.classList.add('drag-over')"
-             ondragleave="this.classList.remove('drag-over')"
-             ondrop="handleDrop(event,'cam')">
-          <input type="file" accept="image/*" id="file-cam" onchange="handleFile(this,'cam')">
-          <div id="upload-ui-cam">
-            <div class="upload-icon">🖼️</div>
-            <div class="upload-label">Drag &amp; drop or <b>click to browse</b><br><span style="font-size:0.72rem;color:#4b5563;">JPG · PNG · WEBP</span></div>
-          </div>
-          <img class="preview-img" id="preview-cam" alt="preview">
-        </div>
-        <button class="submit-btn" id="btn-cam" onclick="runGradCam()" disabled>🔥&nbsp; Generate Grad-CAM</button>
-        <div class="sec-label" style="margin-top:18px;font-size:0.72rem;">
-          <span style="color:#f97316;">■</span> Red/Yellow = high attention &nbsp;
-          <span style="color:#60a5fa;">■</span> Blue = low attention
-        </div>
-      </div>
-      <div>
-        <div class="sec-label">Heatmap</div>
-        <div class="results-card">
-          <div class="spinner" id="spinner-cam"></div>
-          <img class="cam-result-img" id="cam-img" alt="Grad-CAM heatmap">
-          <div class="results-text placeholder" id="result-cam">Upload a photo and click Generate to see where the model focuses.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <div class="custom-footer">
-    🐦 Bird Species Identifier &nbsp;·&nbsp; EfficientNetV2-S &nbsp;·&nbsp; CUB-200-2011 &nbsp;·&nbsp;
-    Built with <a href="https://gradio.app" target="_blank">Gradio</a>
-  </div>
-</div>
-
-<script>
-/* ══════════════════════════════════════════════════
-   DOTFIELD BACKGROUND
-══════════════════════════════════════════════════ */
-(function(){
-  var cv = document.getElementById('dotfield-canvas');
-  if(!cv){ setTimeout(arguments.callee,300); return; }
-  var ctx = cv.getContext('2d');
-  var R=1.5, SP=14, CR=600, CF=0.1, BS=67, GR=160;
-  var mx=-9999, my=-9999, dots=[];
-  function resize(){
-    cv.width=innerWidth; cv.height=innerHeight; dots=[];
-    var cols=Math.ceil(cv.width/SP)+2, rows=Math.ceil(cv.height/SP)+2;
-    for(var r=0;r<=rows;r++) for(var c=0;c<=cols;c++) dots.push({ox:c*SP,oy:r*SP});
-  }
-  function color(d){
-    if(d>=CR) return 'rgba(180,151,207,0.07)';
-    var t=d/CR;
-    var rv=Math.round(168+(180-168)*t), gv=Math.round(85+(151-85)*t), bv=Math.round(247+(207-247)*t);
-    var glow=Math.max(0,1-d/GR);
-    var a=Math.min(1,(0.35+(0.25-0.35)*t)+glow*0.65);
-    return 'rgba('+rv+','+gv+','+bv+','+a.toFixed(3)+')';
-  }
-  function draw(){
-    ctx.clearRect(0,0,cv.width,cv.height);
-    for(var i=0;i<dots.length;i++){
-      var d=dots[i], dx=d.ox-mx, dy=d.oy-my, dist=Math.sqrt(dx*dx+dy*dy);
-      var x=d.ox, y=d.oy;
-      if(dist<CR&&dist>0.01){
-        var ratio=1-dist/CR, disp=ratio*ratio*BS*CF, ang=Math.atan2(dy,dx);
-        x=d.ox+Math.cos(ang)*disp; y=d.oy+Math.sin(ang)*disp;
-      }
-      ctx.beginPath(); ctx.arc(x,y,R,0,Math.PI*2);
-      ctx.fillStyle=color(dist); ctx.fill();
-    }
-    requestAnimationFrame(draw);
-  }
-  addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
-  addEventListener('mouseleave',function(){mx=-9999;my=-9999;});
-  addEventListener('resize',resize);
-  resize(); draw();
-  // Fix Gradio footer
-  var footer=document.querySelector('footer,.built-with');
-  if(footer) footer.style.display='none';
-})();
-
-/* ══════════════════════════════════════════════════
-   TAB SWITCHING
-══════════════════════════════════════════════════ */
-function switchTab(name, btn){
-  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
-  document.getElementById('tab-'+name).classList.add('active');
-  btn.classList.add('active');
-}
-
-/* ══════════════════════════════════════════════════
-   FILE HANDLING
-══════════════════════════════════════════════════ */
-var fileStore = { id: null, cam: null };
-
-function handleFile(input, key){
-  var file = input.files[0];
-  if(!file) return;
-  fileStore[key] = file;
-  showPreview(file, key);
-  document.getElementById('btn-'+key).disabled = false;
-}
-
-function handleDrop(ev, key){
-  ev.preventDefault();
-  document.getElementById('upload-zone-'+key).classList.remove('drag-over');
-  var file = ev.dataTransfer.files[0];
-  if(!file || !file.type.startsWith('image/')) return;
-  fileStore[key] = file;
-  showPreview(file, key);
-  document.getElementById('btn-'+key).disabled = false;
-}
-
-function showPreview(file, key){
-  var reader = new FileReader();
-  reader.onload = function(e){
-    var img = document.getElementById('preview-'+key);
-    img.src = e.target.result;
-    img.style.display = 'block';
-    document.getElementById('upload-ui-'+key).style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-}
-
-/* ══════════════════════════════════════════════════
-   GRADIO API CALLS
-══════════════════════════════════════════════════ */
-var SESSION = Math.random().toString(36).slice(2);
-
-async function uploadToGradio(file){
-  var fd = new FormData();
-  fd.append('files', file);
-  var r = await fetch('/upload?upload_id='+SESSION, {method:'POST', body:fd});
-  var data = await r.json();
-  return data[0];
-}
-
-async function runIdentify(){
-  var file = fileStore['id'];
-  if(!file) return;
-  setLoading('id', true);
-  try {
-    var filePath = await uploadToGradio(file);
-    var payload = {
-      data: [{path: filePath, orig_name: file.name, size: file.size, mime_type: file.type, is_stream: false, meta:{_type:'gradio.FileData'}}],
-      fn_index: 0, session_hash: SESSION
-    };
-    var r = await fetch('/api/predict', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    var data = await r.json();
-    var text = data.data ? data.data[0] : (data.error || 'Error: unexpected response');
-    showResult('id', text, false);
-  } catch(e) {
-    showResult('id', '❌ Error: ' + e.message, false);
-  }
-  setLoading('id', false);
-}
-
-async function runGradCam(){
-  var file = fileStore['cam'];
-  if(!file) return;
-  setLoading('cam', true);
-  try {
-    var filePath = await uploadToGradio(file);
-    var payload = {
-      data: [{path: filePath, orig_name: file.name, size: file.size, mime_type: file.type, is_stream: false, meta:{_type:'gradio.FileData'}}],
-      fn_index: 1, session_hash: SESSION
-    };
-    var r = await fetch('/api/predict', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    var data = await r.json();
-    if(data.data){
-      var imgData = data.data[0];
-      var textData = data.data[1] || '';
-      // imgData can be {url:...} or {path:...} or base64
-      var camImg = document.getElementById('cam-img');
-      if(imgData && imgData.url){
-        camImg.src = imgData.url; camImg.style.display = 'block';
-      } else if(imgData && imgData.path){
-        camImg.src = '/file=' + imgData.path; camImg.style.display = 'block';
-      }
-      showResult('cam', textData || '✅ Grad-CAM generated!', false);
-    } else {
-      showResult('cam', '❌ ' + (data.error||'Error'), false);
-    }
-  } catch(e) {
-    showResult('cam', '❌ Error: ' + e.message, false);
-  }
-  setLoading('cam', false);
-}
-
-function setLoading(key, on){
-  document.getElementById('spinner-'+key).style.display = on ? 'block' : 'none';
-  document.getElementById('result-'+key).style.display  = on ? 'none'  : 'block';
-  document.getElementById('btn-'+key).disabled = on;
-  if(key==='cam') document.getElementById('cam-img').style.display = 'none';
-}
-
-function showResult(key, text, isPlaceholder){
-  var el = document.getElementById('result-'+key);
-  el.textContent = text;
-  el.className = 'results-text' + (isPlaceholder ? ' placeholder' : '');
-  el.style.display = 'block';
-}
-</script>
-"""
-
-with gr.Blocks(title="🐦 Bird Species Identifier") as app:
-
-    # ── Hidden backend components (offscreen, still functional) ──
-    with gr.Group(elem_id="hidden-backend"):
-        _img  = gr.Image(type="numpy")
-        _txt  = gr.Textbox()
-        _btn  = gr.Button()
-        _cimg = gr.Image(type="numpy")
-        _cout = gr.Image()
-        _ctxt = gr.Textbox()
-        _cbtn = gr.Button()
-
-    _btn.click(fn=predict_bird,    inputs=_img,  outputs=_txt)
-    _cbtn.click(fn=generate_gradcam, inputs=_cimg, outputs=[_cout, _ctxt])
-
-    # ── Custom frontend ──
-    gr.HTML(FRONTEND_HTML)
-
-print("\n✅ Starting Bird Identifier — Custom UI Edition...")
-print("   Open in browser: http://127.0.0.1:7860\n")
-app.launch(theme=BIRD_THEME, css=CUSTOM_CSS)
-"""
-"""

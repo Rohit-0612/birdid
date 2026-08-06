@@ -1,0 +1,17 @@
+# LLM layer — species knowledge base and (later) RAG field guide.
+# Runs fully locally against Ollama; no API key, no network calls.
+#
+# Install:  pip3 install -r requirements-llm.txt
+#
+# Also requires the Ollama daemon plus at least one pulled model:
+#   ollama pull gemma3:12b        # generation (also multimodal)
+#   ollama pull nomic-embed-text  # embeddings, for the RAG phase
+
+ollama==0.6.2
+pydantic==2.12.4
+
+# Vector store for the RAG field guide
+chromadb==1.5.9
+
+# xeno-canto audio sample downloader
+requests==2.33.1

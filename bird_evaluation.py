@@ -206,105 +206,95 @@ print("\n✅ FEATURE 1 COMPLETE\n")
 # ════════════════════════════════════════════════════════════
 # FEATURE 2 — MODEL COMPARISON TABLE
 # ════════════════════════════════════════════════════════════
+# Every number in this section is MEASURED from a real evaluation run.
+# There are deliberately no placeholder rows: a model appears here only
+# after it has actually been trained and evaluated on this test set.
+# To add a row, train the model, run this script against it, and the
+# entry is appended to results.json automatically.
 print("=" * 60)
 print("FEATURE 2 — Model Comparison")
 print("=" * 60)
-print("Note: This loads your already-trained EfficientNetV2-S.")
-print("To compare other models, retrain them and update the")
-print("results dictionary below with their actual numbers.\n")
 
-# ── Your trained model results (already computed above) ──────
-results = {
-    "EfficientNetV2-S (yours)": {
-        "top1":      round(top1_acc, 2),
-        "top5":      round(top5_acc, 2),
-        "params_M":  20.2,
-        "size_MB":   82.7,
-        "train_hrs": 2.5,
-    },
-    # ── Add your other models here after retraining ──────────
-    # Retrain with efficientnet_b2, resnet50, mobilenet_v3_large
-    # then paste their top1/top5 accuracy numbers here:
-    "EfficientNet-B2": {
-        "top1":      78.0,   # ← replace with actual after retraining
-        "top5":      93.0,
-        "params_M":  7.8,
-        "size_MB":   29.0,
-        "train_hrs": 1.2,
-    },
-    "ResNet-50": {
-        "top1":      75.0,   # ← replace with actual after retraining
-        "top5":      91.0,
-        "params_M":  25.6,
-        "size_MB":   98.0,
-        "train_hrs": 1.5,
-    },
-    "MobileNetV3-Large": {
-        "top1":      70.0,   # ← replace with actual after retraining
-        "top5":      88.0,
-        "params_M":  5.4,
-        "size_MB":   21.0,
-        "train_hrs": 0.8,
-    },
+RESULTS_PATH = os.path.join(SAVE_DIR, "results.json")
+
+# ── Measure this model's real footprint (not hardcoded) ──────
+n_params  = sum(p.numel() for p in model.parameters())
+state_MB  = sum(t.numel() * t.element_size()
+                for t in model.state_dict().values()) / (1024 ** 2)
+
+this_run = {
+    "top1":        round(top1_acc, 2),
+    "top5":        round(top5_acc, 2),
+    "params_M":    round(n_params / 1e6, 2),
+    "size_MB":     round(state_MB, 1),
+    "split":       "custom 70/15/15 re-split (NOT the official CUB split)",
+    "n_test":      int(len(all_labels)),
+    "eval_date":   __import__("datetime").date.today().isoformat(),
 }
 
-# ── Plot comparison table as figure ─────────────────────────
+# ── Accumulate across runs instead of inventing rows ─────────
+if os.path.exists(RESULTS_PATH):
+    with open(RESULTS_PATH) as f:
+        results = json.load(f)
+else:
+    results = {}
+results["EfficientNetV2-S"] = this_run
+
+with open(RESULTS_PATH, "w") as f:
+    json.dump(results, f, indent=2)
+print(f"📄 Measured results written to: {RESULTS_PATH}")
+
+# ── Render the comparison only when there is something to compare ──
 model_names = list(results.keys())
-top1_scores = [results[m]["top1"] for m in model_names]
-top5_scores = [results[m]["top5"] for m in model_names]
-sizes       = [results[m]["size_MB"] for m in model_names]
-train_times = [results[m]["train_hrs"] for m in model_names]
 
-fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-colors = ["#534AB7" if "yours" in m else "#B4B2A9" for m in model_names]
+if len(model_names) < 2:
+    print("\nOnly one model has been evaluated so far, so there is no")
+    print("comparison chart to draw. Train and evaluate another backbone")
+    print("(ResNet-50, MobileNetV3-Large, ...) and it will appear here.")
+else:
+    top1_scores = [results[m]["top1"]     for m in model_names]
+    sizes       = [results[m]["size_MB"]  for m in model_names]
+    params      = [results[m]["params_M"] for m in model_names]
 
-# Top-1 accuracy
-axes[0].bar(model_names, top1_scores, color=colors)
-axes[0].set_title("Top-1 Accuracy (%)", fontsize=12)
-axes[0].set_ylim(0, 100)
-axes[0].set_ylabel("Accuracy (%)")
-for i, v in enumerate(top1_scores):
-    axes[0].text(i, v+1, f"{v}%", ha="center", fontsize=10, fontweight="bold")
-axes[0].tick_params(axis="x", rotation=20)
+    best = max(model_names, key=lambda m: results[m]["top1"])
+    colors = ["#534AB7" if m == best else "#B4B2A9" for m in model_names]
 
-# Model size
-axes[1].bar(model_names, sizes, color=colors)
-axes[1].set_title("Model Size (MB)", fontsize=12)
-axes[1].set_ylabel("Size (MB)")
-for i, v in enumerate(sizes):
-    axes[1].text(i, v+1, f"{v}MB", ha="center", fontsize=10)
-axes[1].tick_params(axis="x", rotation=20)
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    for ax, vals, title, unit in (
+        (axes[0], top1_scores, "Top-1 Accuracy (%)", "%"),
+        (axes[1], sizes,       "Model Size (MB)",    "MB"),
+        (axes[2], params,      "Parameters (M)",     "M"),
+    ):
+        ax.bar(model_names, vals, color=colors)
+        ax.set_title(title, fontsize=12)
+        for i, v in enumerate(vals):
+            ax.text(i, v, f"{v}{unit}", ha="center", va="bottom", fontsize=10)
+        ax.tick_params(axis="x", rotation=20)
+    axes[0].set_ylim(0, 100)
 
-# Training time
-axes[2].bar(model_names, train_times, color=colors)
-axes[2].set_title("Training Time (hours)", fontsize=12)
-axes[2].set_ylabel("Hours")
-for i, v in enumerate(train_times):
-    axes[2].text(i, v+0.05, f"{v}h", ha="center", fontsize=10)
-axes[2].tick_params(axis="x", rotation=20)
+    legend_patch = mpatches.Patch(color="#534AB7", label=f"Best: {best}")
+    fig.legend(handles=[legend_patch], loc="upper right", fontsize=10)
+    plt.suptitle("Model Comparison — measured on the same test split", fontsize=14)
+    plt.tight_layout()
+    comp_path = os.path.join(SAVE_DIR, "model_comparison.png")
+    plt.savefig(comp_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"📊 Model comparison chart saved to: {comp_path}")
 
-legend_patch = mpatches.Patch(color="#534AB7", label="Your model (best)")
-fig.legend(handles=[legend_patch], loc="upper right", fontsize=10)
-plt.suptitle("Model Comparison on CUB-200-2011 Dataset", fontsize=14)
-plt.tight_layout()
-comp_path = os.path.join(SAVE_DIR, "model_comparison.png")
-plt.savefig(comp_path, dpi=150, bbox_inches="tight")
-plt.close()
-print(f"📊 Model comparison chart saved to: {comp_path}")
-
-# ── Save as text table too ───────────────────────────────────
+# ── Text table (measured rows only) ──────────────────────────
 table_path = os.path.join(SAVE_DIR, "model_comparison_table.txt")
 with open(table_path, "w") as f:
     f.write("Model Comparison Table — CUB-200-2011 Bird Dataset\n")
-    f.write("="*65 + "\n")
-    f.write(f"{'Model':<25} {'Top-1':>8} {'Top-5':>8} {'Size MB':>10} {'Train hrs':>12}\n")
-    f.write("-"*65 + "\n")
+    f.write("All figures measured; no placeholder rows.\n")
+    f.write(f"Split: {this_run['split']}\n")
+    f.write("=" * 62 + "\n")
+    f.write(f"{'Model':<25} {'Top-1':>8} {'Top-5':>8} {'Params M':>10} {'Size MB':>9}\n")
+    f.write("-" * 62 + "\n")
     for m in model_names:
         r = results[m]
         f.write(f"{m:<25} {r['top1']:>7.1f}% {r['top5']:>7.1f}% "
-                f"{r['size_MB']:>9.1f} {r['train_hrs']:>11.1f}\n")
-    f.write("="*65 + "\n")
-    f.write(f"\nBest model: EfficientNetV2-S with {top1_acc:.2f}% Top-1 accuracy\n")
+                f"{r['params_M']:>10.1f} {r['size_MB']:>8.1f}\n")
+    f.write("=" * 62 + "\n")
 print(f"📄 Model comparison table saved to: {table_path}")
 
 print("\n✅ FEATURE 2 COMPLETE\n")
