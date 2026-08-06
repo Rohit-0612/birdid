@@ -9,7 +9,10 @@
 *.tar.gz
 CUB_200_2011/
 birds_split/
-bird_audio_samples/
+# Audio itself is CC-licensed and redistributable, but bulky. Keep the
+# manifest so attribution survives even though the files do not.
+bird_audio_samples/*
+!bird_audio_samples/manifest.json
 
 # ── Generated output ─────────────────────────────────────────
 evaluation/
@@ -36,3 +39,7 @@ dist/
 
 # ── macOS ────────────────────────────────────────────────────
 .DS_Store
+
+# Intermediate build artifact for the knowledge base; species_kb.json is
+# the committed output. Keeps the resumable cache out of history.
+data/species_kb.jsonl

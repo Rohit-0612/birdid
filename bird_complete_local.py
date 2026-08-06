@@ -30,6 +30,11 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import json
+import tempfile
+import librosa
+import librosa.display
+import soundfile as sf
 import gradio as gr
 
 try:
@@ -541,13 +546,133 @@ assert not _unknown_keys, (
     f"be reached: {sorted(_unknown_keys)}"
 )
 
-SPECIES_WITHOUT_NOTES = sorted(set(CLASS_NAMES) - set(HABITAT_MAP))
-print(f"✅ Species data — habitat {len(HABITAT_MAP)}/{NUM_SPECIES}, "
+print(f"✅ Curated species data — habitat {len(HABITAT_MAP)}/{NUM_SPECIES}, "
       f"migration {len(MIGRATION_MAP)}/{NUM_SPECIES}, "
       f"look-alikes {len(SIMILAR_SPECIES)}/{NUM_SPECIES}")
-if SPECIES_WITHOUT_NOTES:
-    print(f"⚠️  {len(SPECIES_WITHOUT_NOTES)} species have no habitat/migration "
-          f"notes yet (e.g. {display_name(SPECIES_WITHOUT_NOTES[0])})")
+
+
+# ════════════════════════════════════════════════════════════
+# LLM KNOWLEDGE BASE (optional overlay)
+# ════════════════════════════════════════════════════════════
+# data/species_kb.json is generated locally by scripts/build_species_kb.py
+# against an Ollama model. It is machine-written and NOT expert-verified, so
+# it is layered *underneath* the curated tables rather than over them:
+#
+#   curated text wins wherever it exists
+#   the LLM fills only genuine gaps (15 species had no notes at all)
+#   extra fields (scientific name, size, diet, field marks) are additive
+#
+# Every value carries its provenance so the UI can label what came from
+# where. An unlabelled LLM fact in a portfolio project is a liability;
+# a labelled one with a measured error rate is a feature.
+
+SPECIES_KB_PATH = os.path.join(PROJECT_DIR, "data", "species_kb.json")
+SPECIES_KB = {}
+KB_SOURCE_MODEL = None
+
+if os.path.exists(SPECIES_KB_PATH):
+    try:
+        with open(SPECIES_KB_PATH) as _f:
+            _raw = json.load(_f)
+        _valid = set(CLASS_NAMES)
+        SPECIES_KB = {k: v for k, v in _raw.items() if k in _valid}
+        if SPECIES_KB:
+            KB_SOURCE_MODEL = next(iter(SPECIES_KB.values())).get("_source", "unknown")
+        _skipped = len(_raw) - len(SPECIES_KB)
+        print(f"🤖 LLM knowledge base — {len(SPECIES_KB)}/{NUM_SPECIES} records "
+              f"from {KB_SOURCE_MODEL}"
+              + (f" ({_skipped} ignored: no matching class)" if _skipped else ""))
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"⚠️  Could not read {SPECIES_KB_PATH}: {e}")
+else:
+    print("ℹ️  No LLM knowledge base yet — run scripts/build_species_kb.py")
+
+_still_missing = [f for f in CLASS_NAMES
+                  if f not in HABITAT_MAP and f not in SPECIES_KB]
+if _still_missing:
+    print(f"⚠️  {len(_still_missing)} species still have no notes from any source")
+
+
+def species_info(folder):
+    """Merge curated + LLM data for one species, tracking where each came from.
+
+    Returns a dict with habitat/migration/similar plus a `used_llm` flag so
+    the caller can attach the provenance footnote.
+    """
+    kb = SPECIES_KB.get(folder, {})
+    used_llm = False
+
+    habitat = HABITAT_MAP.get(folder)
+    if not habitat and kb.get("habitat"):
+        habitat, used_llm = kb["habitat"], True
+
+    migration = MIGRATION_MAP.get(folder)
+    if not migration and kb.get("migration"):
+        migration, used_llm = kb["migration"], True
+
+    similar = SIMILAR_SPECIES.get(folder)
+    if not similar and kb.get("similar_species"):
+        first = kb["similar_species"][0]
+        similar = (first.get("name", ""), first.get("how_to_distinguish", ""))
+        used_llm = True
+
+    # Extras exist only in the KB, so they are always machine-written.
+    extras = {k: kb[k] for k in
+              ("scientific_name", "size_cm", "diet", "field_marks",
+               "conservation_status", "fun_fact")
+              if kb.get(k)}
+    if extras:
+        used_llm = True
+
+    return {
+        "habitat":   habitat or "Location data not available",
+        "migration": migration or "Migration data not available for this species",
+        "similar":   similar,
+        "extras":    extras,
+        "used_llm":  used_llm,
+    }
+
+
+def match_cub_species(external_name):
+    """Map a BirdNET common name onto a CUB folder, or None.
+
+    The two label spaces do not line up: BirdNET knows ~6,500 species and
+    uses current standard names, while CUB uses 200 abbreviated and
+    occasionally misspelled folder names ('Cardinal' for Northern Cardinal,
+    'Artic_Tern', bare genera like 'Geococcyx'). Exact matching fails on
+    most of them, so this falls back to containment and prefers the longest
+    match — otherwise 'Tern' would swallow 'Arctic Tern'.
+
+    This is a heuristic, not a taxonomy. A hand-verified CUB -> scientific
+    name mapping is the real fix, and the KB's scientific_name field is the
+    natural place to build it from.
+    """
+    if not external_name:
+        return None
+    target = external_name.lower().strip()
+    best, best_len = None, 0
+
+    for folder in CLASS_NAMES:
+        key = display_name(folder).lower()
+        if key == target:
+            return folder
+        if (key in target or target in key) and len(key) > best_len:
+            best, best_len = folder, len(key)
+
+    # Fall back to the KB's scientific name, which is often more reliable
+    # than the abbreviated common name.
+    if not best:
+        for folder, rec in SPECIES_KB.items():
+            sci = (rec.get("scientific_name") or "").lower()
+            if sci and sci == target:
+                return folder
+    return best
+
+
+LLM_DISCLAIMER = (
+    f"ℹ️  Some notes above were generated locally by {KB_SOURCE_MODEL} and are "
+    "not expert-verified."
+) if SPECIES_KB else None
 
 
 # ════════════════════════════════════════════════════════════
@@ -566,7 +691,7 @@ def predict_bird(image):
     for prob, idx in zip(top5.values[0], top5.indices[0]):
         folder_name  = CLASS_NAMES[idx.item()]
         species_name = display_name(folder_name)
-        habitat      = HABITAT_MAP.get(folder_name, "Location data not available")
+        habitat      = species_info(folder_name)["habitat"]
         confidence   = prob.item() * 100
         results.append((folder_name, species_name, confidence, habitat))
 
@@ -574,6 +699,7 @@ def predict_bird(image):
     top_name    = results[0][1]
     top_conf    = results[0][2]
     top_habitat = results[0][3]
+    info        = species_info(top_folder)
 
     if top_conf < 60:
         conf_msg = f"⚠️  LOW CONFIDENCE ({top_conf:.1f}%) — Try a clearer photo"
@@ -582,27 +708,47 @@ def predict_bird(image):
     else:
         conf_msg = f"✅  HIGH CONFIDENCE ({top_conf:.1f}%) — Very sure"
 
-    similar  = SIMILAR_SPECIES.get(top_folder)
-    migration = MIGRATION_MAP.get(top_folder, "Migration data not available for this species")
+    similar   = info["similar"]
+    migration = info["migration"]
+    extras    = info["extras"]
 
-    output = f"""
-🐦  SPECIES     : {top_name}
-{conf_msg}
+    sci = extras.get("scientific_name")
+    output = f"\n🐦  SPECIES     : {top_name}"
+    if sci:
+        output += f"\n🔬  SCIENTIFIC  : {sci}"
+    output += f"\n{conf_msg}\n"
 
-📍  FOUND IN    : {top_habitat}
+    facts = [("📏  SIZE", extras.get("size_cm")),
+             ("🍽️   DIET", extras.get("diet"))]
+    for label, value in facts:
+        if value:
+            output += f"\n{label}        : {value}"
+    if any(v for _, v in facts):
+        output += "\n"
 
-✈️   MIGRATION   : {migration}
-"""
+    output += f"\n📍  FOUND IN    : {top_habitat}\n"
+    output += f"\n✈️   MIGRATION   : {migration}\n"
+
+    marks = extras.get("field_marks") or []
+    if marks:
+        output += "\n🔎  FIELD MARKS :\n"
+        for mark in marks[:6]:
+            output += f"    • {mark}\n"
+
     if similar:
-        output += f"\n⚠️  LOOKS SIMILAR TO : {similar[0]}\n    How to tell apart  : {similar[1]}\n"
+        output += (f"\n⚠️  LOOKS SIMILAR TO : {similar[0]}"
+                   f"\n    How to tell apart  : {similar[1]}\n")
 
-    output += f"""
-{'─'*55}
-TOP 5 PREDICTIONS:
-"""
+    if extras.get("fun_fact"):
+        output += f"\n💡  DID YOU KNOW : {extras['fun_fact']}\n"
+
+    output += f"\n{'─'*55}\nTOP 5 PREDICTIONS:\n"
     for i, (_folder, name, conf, habitat) in enumerate(results):
         marker = " ◀ TOP PICK" if i == 0 else ""
         output += f"\n#{i+1}  {name}  ({conf:.1f}%){marker}\n    📍 {habitat}\n"
+
+    if info["used_llm"] and LLM_DISCLAIMER:
+        output += f"\n{'─'*55}\n{LLM_DISCLAIMER}\n"
 
     return output
 
@@ -830,49 +976,133 @@ def run_calibration():
 # ════════════════════════════════════════════════════════════
 # BIRDNET AUDIO IDENTIFICATION
 # ════════════════════════════════════════════════════════════
-def predict_bird_from_audio(audio_path):
+def decode_audio(audio_path):
+    """Decode any librosa-readable file to a temp 48 kHz mono WAV.
+
+    BirdNET expects 48 kHz mono. Handing it an MP3 directly routes through
+    pydub, which shells out to ffmpeg — a system dependency this project
+    does not need: libsndfile (via soundfile) decodes MP3 since 1.1, and
+    librosa resamples. Returns (wav_path, samples, sample_rate).
+    """
+    y, sr = librosa.load(audio_path, sr=48000, mono=True)
+    if y.size == 0:
+        raise ValueError("audio file decoded to zero samples")
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp.close()
+    sf.write(tmp.name, y, sr)
+    return tmp.name, y, sr
+
+
+def render_spectrogram(y, sr, detections, save_path):
+    """Mel-spectrogram plus a lane-per-species detection timeline."""
+    duration = len(y) / sr
+    by_species = {}
+    for det in detections:
+        by_species.setdefault(det["common_name"], []).append(det)
+    lanes = sorted(by_species,
+                   key=lambda n: max(d["confidence"] for d in by_species[n]),
+                   reverse=True)[:6]
+
+    height = 4.2 + 0.42 * max(len(lanes), 1)
+    fig, (ax_spec, ax_time) = plt.subplots(
+        2, 1, figsize=(12, height), sharex=True,
+        gridspec_kw={"height_ratios": [3, max(1.1, 0.42 * max(len(lanes), 1))]},
+    )
+
+    mel = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128, fmax=15000)
+    img = librosa.display.specshow(
+        librosa.power_to_db(mel, ref=np.max),
+        sr=sr, x_axis="time", y_axis="mel", fmax=15000, ax=ax_spec, cmap="magma",
+    )
+    ax_spec.set_title("Mel spectrogram — what BirdNET listens to", fontsize=12)
+    ax_spec.set_ylabel("Frequency (Hz)")
+    fig.colorbar(img, ax=ax_spec, format="%+2.0f dB", pad=0.01)
+
+    cmap = plt.get_cmap("viridis")
+    for row, name in enumerate(lanes):
+        for det in by_species[name]:
+            conf = det["confidence"]
+            ax_time.barh(row, det["end_time"] - det["start_time"],
+                         left=det["start_time"], height=0.62,
+                         color=cmap(conf), edgecolor="white", linewidth=0.5)
+            ax_time.text(det["start_time"] + 0.1, row, f"{conf*100:.0f}%",
+                         va="center", fontsize=7, color="white")
+    ax_time.set_yticks(range(len(lanes)))
+    ax_time.set_yticklabels([n[:28] for n in lanes], fontsize=8)
+    ax_time.set_xlim(0, duration)
+    ax_time.invert_yaxis()
+    ax_time.set_xlabel("Time (seconds)")
+    ax_time.set_title("Detections over time — colour = confidence", fontsize=10)
+    ax_time.grid(axis="x", alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=140, bbox_inches="tight")
+    plt.close()
+    return save_path
+
+
+def predict_bird_from_audio(audio_path, use_location=False, lat=39.83, lon=-98.58,
+                            obs_date=None, min_conf=0.25):
+    """Identify a bird from a recording.
+
+    `use_location` is off by default and that is deliberate. BirdNET treats
+    lat/lon/date as a species-occurrence prior, so a wrong location actively
+    suppresses the correct species. This used to be hardcoded to 20.59 N,
+    78.96 E — central India — while every CUB species is North American, so
+    the prior was fighting the classifier on every single call.
+    """
     if not BIRDNET_AVAILABLE:
-        return (
-            "⚠️  BirdNET not installed.\n\n"
-            "Fix: pip3 install birdnetlib\n"
-            "Then restart the app."
-        )
+        return ("⚠️  BirdNET not installed.\n\n"
+                "Fix: pip3 install birdnetlib\nThen restart the app."), None
 
     if audio_path is None:
-        return "❌ Please upload an audio file (.mp3 or .wav)"
+        return "❌ Please upload or record some audio first.", None
 
+    wav_path = None
     try:
-        from datetime import date
-        recording = Recording(
-            BIRDNET_ANALYZER,
-            audio_path,
-            lat=20.5937,
-            lon=78.9629,
-            date=date.today(),
-            min_conf=0.01,
-        )
+        wav_path, y, sr = decode_audio(audio_path)
+        duration = len(y) / sr
+
+        kwargs = {"min_conf": float(min_conf)}
+        if use_location:
+            from datetime import date, datetime
+            if isinstance(obs_date, str) and obs_date.strip():
+                try:
+                    parsed = datetime.strptime(obs_date.strip(), "%Y-%m-%d").date()
+                except ValueError:
+                    parsed = date.today()
+            else:
+                parsed = date.today()
+            kwargs.update(lat=float(lat), lon=float(lon), date=parsed)
+
+        recording = Recording(BIRDNET_ANALYZER, wav_path, **kwargs)
         recording.analyze()
         detections = recording.detections
 
+        prior_note = (f"📍 Location prior ON — {float(lat):.2f}, {float(lon):.2f}"
+                      if use_location else
+                      "🌍 Location prior OFF — scoring against all species")
+
         if not detections:
             return (
-                "🔇 No bird detected in this recording.\n\n"
-                "Tips for better results:\n"
-                "  • Use a quiet recording with minimal background noise\n"
-                "  • Recording should be at least 3 seconds long\n"
-                "  • Try lowering min_conf threshold\n"
-                "  • Download test audio from xeno-canto.org"
-            )
+                f"🔇 No bird detected above {float(min_conf)*100:.0f}% confidence.\n\n"
+                f"{prior_note}\n"
+                f"Clip length: {duration:.1f}s\n\n"
+                "Things to try:\n"
+                "  • Lower the confidence threshold slider\n"
+                "  • Turn the location prior off if it is on\n"
+                "  • Use a clip of at least 3 seconds with little background noise\n"
+                "  • Grab test recordings from xeno-canto.org"
+            ), None
 
-        # Sort by confidence descending
-        detections = sorted(
-            detections, key=lambda x: x['confidence'], reverse=True
-        )
+        spec_path = render_spectrogram(
+            y, sr, detections, os.path.join(SAVE_DIR, "audio_analysis.png"))
 
+        detections = sorted(detections, key=lambda x: x["confidence"], reverse=True)
         top = detections[0]
-        top_name      = top['common_name']
-        top_sci       = top['scientific_name']
-        top_conf      = top['confidence'] * 100
+        top_name      = top["common_name"]
+        top_sci       = top["scientific_name"]
+        top_conf      = top["confidence"] * 100
 
         if top_conf < 40:
             conf_msg = f"⚠️  LOW CONFIDENCE ({top_conf:.1f}%)"
@@ -881,23 +1111,24 @@ def predict_bird_from_audio(audio_path):
         else:
             conf_msg = f"✅  HIGH CONFIDENCE ({top_conf:.1f}%)"
 
-        # Try to match BirdNET name to our HABITAT_MAP
-        habitat   = "Location data not available"
-        migration = "Migration data not available"
-        similar   = None
-
-        for folder_name in HABITAT_MAP:
-            species_key = display_name(folder_name).lower()
-            if species_key in top_name.lower() or top_name.lower() in species_key:
-                habitat   = HABITAT_MAP[folder_name]
-                migration = MIGRATION_MAP.get(folder_name, "Migration data not available")
-                similar   = SIMILAR_SPECIES.get(folder_name)
-                break
+        matched_folder = match_cub_species(top_name)
+        if matched_folder:
+            _info     = species_info(matched_folder)
+            habitat   = _info["habitat"]
+            migration = _info["migration"]
+            similar   = _info["similar"]
+        else:
+            habitat   = "Location data not available"
+            migration = "Migration data not available"
+            similar   = None
 
         output = f"""
 🎵  IDENTIFIED FROM CALL : {top_name}
 🔬  Scientific name      : {top_sci}
 {conf_msg}
+
+{prior_note}
+🎧  Clip: {duration:.1f}s · threshold {float(min_conf)*100:.0f}% · {len(detections)} detection(s)
 
 📍  FOUND IN   : {habitat}
 
@@ -905,30 +1136,53 @@ def predict_bird_from_audio(audio_path):
 
 🤖  Powered by : BirdNET (Cornell Lab of Ornithology)
 """
+        if matched_folder:
+            output += (f"\n🔗  In this project's image model as: "
+                       f"{display_name(matched_folder)}\n")
+        else:
+            output += (
+                f"\n⚠️  '{top_name}' is not one of the {NUM_SPECIES} CUB species\n"
+                "    this project's image model knows. BirdNET covers ~6,500\n"
+                "    species, so audio can identify birds the photo tab cannot.\n"
+            )
+
         if similar:
             output += (
                 f"\n⚠️  SOUNDS SIMILAR TO : {similar[0]}\n"
                 f"    How to tell apart  : {similar[1]}\n"
             )
 
-        if len(detections) > 1:
-            output += f"\n{'─'*55}\nALL DETECTIONS IN RECORDING:\n"
-            for i, det in enumerate(detections[:8]):
-                bar = "█" * int(det['confidence'] * 20)
-                output += (
-                    f"\n#{i+1}  {det['common_name']}"
-                    f"  ({det['confidence']*100:.1f}%)\n"
-                    f"    {bar}\n"
-                )
+        # Group by species: one bird singing eight times is one bird, not
+        # eight detections. Report its best score and how often it was heard.
+        grouped = {}
+        for det in detections:
+            g = grouped.setdefault(det["common_name"],
+                                   {"best": 0.0, "count": 0, "first": det["start_time"]})
+            g["best"] = max(g["best"], det["confidence"])
+            g["count"] += 1
+            g["first"] = min(g["first"], det["start_time"])
 
-        return output
+        if len(grouped) > 1 or detections[0]["confidence"] < 1.0:
+            output += f"\n{'─'*55}\nSPECIES HEARD IN THIS RECORDING:\n"
+            ranked = sorted(grouped.items(), key=lambda kv: kv[1]["best"], reverse=True)
+            for i, (name, g) in enumerate(ranked[:8], 1):
+                bar = "█" * int(g["best"] * 20)
+                times = f"{g['count']}× from {g['first']:.0f}s"
+                output += (f"\n#{i}  {name}  ({g['best']*100:.1f}%)  · {times}\n"
+                           f"    {bar}\n")
+
+        return output, spec_path
 
     except Exception as e:
-        return (
-            f"❌ Error: {str(e)}\n\n"
-            "Make sure the file is a valid .mp3 or .wav\n"
-            "Minimum 3 seconds of audio recommended"
-        )
+        return (f"❌ Error: {type(e).__name__}: {e}\n\n"
+                "Supported: .wav, .mp3, .flac, .ogg, .m4a\n"
+                "At least 3 seconds of audio is recommended."), None
+    finally:
+        if wav_path and os.path.exists(wav_path):
+            try:
+                os.unlink(wav_path)
+            except OSError:
+                pass
 
 
 # ════════════════════════════════════════════════════════════
@@ -1224,28 +1478,60 @@ with gr.Blocks(title="🐦 Bird Species Identifier") as app:
         with gr.Tab("🎵 Audio ID"):
             gr.Markdown("### Identify a bird from its call using BirdNET")
             gr.Markdown(
-                "Upload a **.mp3 or .wav** bird call recording — "
-                "BirdNET by Cornell Lab will identify the species.\n\n"
-                "**Best results:** quiet recording, 3+ seconds, "
-                "single bird calling clearly.\n\n"
+                "Upload or record a bird call — BirdNET (Cornell Lab) identifies "
+                "it from sound. Handles **.wav, .mp3, .flac, .ogg, .m4a**.\n\n"
+                "**Best results:** 3+ seconds, little background noise, one bird "
+                "calling clearly.\n\n"
+                "**Note:** BirdNET knows ~6,500 species worldwide, far more than "
+                f"the {NUM_SPECIES} this project's photo model covers — so it can "
+                "name birds the image tab cannot.\n\n"
                 "**Get test audio:** [xeno-canto.org](https://xeno-canto.org)"
             )
-            audio_input  = gr.Audio(
-                label="Upload Bird Call (.mp3 / .wav)",
-                type="filepath"
+            with gr.Row():
+                with gr.Column(scale=1):
+                    audio_input = gr.Audio(
+                        label="Upload or record a bird call",
+                        sources=["upload", "microphone"],
+                        type="filepath",
+                    )
+                    min_conf_slider = gr.Slider(
+                        0.05, 0.90, value=0.25, step=0.05,
+                        label="Confidence threshold",
+                        info="Below ~0.15 you will mostly see noise.",
+                    )
+                    # BirdNET uses lat/lon/date as a species-occurrence prior.
+                    # Off by default: a wrong location is worse than none, and
+                    # this was previously hardcoded to central India.
+                    use_location = gr.Checkbox(
+                        value=False,
+                        label="Use location & date prior",
+                        info="Only enable if you know where the recording was made. "
+                             "A wrong location suppresses the correct species.",
+                    )
+                    with gr.Row():
+                        lat_input = gr.Number(value=39.83, label="Latitude", precision=4)
+                        lon_input = gr.Number(value=-98.58, label="Longitude", precision=4)
+                    date_input = gr.Textbox(
+                        label="Date (YYYY-MM-DD)", placeholder="2026-05-14",
+                        info="Blank uses today. Season strongly affects which species are present.",
+                    )
+                    audio_btn = gr.Button("🎵 Identify from Audio", variant="primary")
+
+                with gr.Column(scale=1):
+                    audio_result = gr.Textbox(
+                        label="BirdNET Identification Result", lines=20,
+                        placeholder="Results will appear here…",
+                    )
+
+            audio_plot = gr.Image(
+                label="Mel spectrogram & detection timeline", type="filepath",
             )
-            audio_result = gr.Textbox(
-                label="BirdNET Identification Result",
-                lines=25
-            )
-            audio_btn = gr.Button(
-                "🎵 Identify from Audio",
-                variant="primary"
-            )
+
             audio_btn.click(
                 fn=predict_bird_from_audio,
-                inputs=audio_input,
-                outputs=audio_result
+                inputs=[audio_input, use_location, lat_input, lon_input,
+                        date_input, min_conf_slider],
+                outputs=[audio_result, audio_plot],
             )
 
     # ── Footer ──
