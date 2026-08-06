@@ -1,0 +1,38 @@
+# ── Model checkpoints ────────────────────────────────────────
+*.pth
+*.pt
+*.ckpt
+
+# ── Datasets & archives (multi-GB, download separately) ──────
+*.zip
+*.tgz
+*.tar.gz
+CUB_200_2011/
+birds_split/
+bird_audio_samples/
+
+# ── Generated output ─────────────────────────────────────────
+evaluation/
+results.json
+.gradio/
+server.log
+*.pid
+
+# ── Secrets ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ── Node ─────────────────────────────────────────────────────
+node_modules/
+dist/
+
+# ── macOS ────────────────────────────────────────────────────
+.DS_Store
