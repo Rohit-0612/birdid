@@ -1,10 +1,11 @@
 # BirdID
 
 Identify a bird from a photo or a recording, hear it described aloud in a
-field-guide voice, ask follow-up questions, and keep a life list. Everything runs
-locally — no API keys, no cloud calls, no telemetry.
+field-guide voice, ask follow-up questions, and collect every bird you find into a
+deck. Everything runs locally — no API keys, no telemetry. The only network access
+is a one-time model download, and only if you enable the second identifier.
 
-<!-- Screenshots: run ./dev.sh and grab the Identify and Life list views. -->
+<!-- Screenshots: run ./dev.sh and grab the Identify and Deck views. -->
 
 ## What it does
 
@@ -20,6 +21,23 @@ logits and rejects inputs that are not one of the known species. It reliably
 rejects things that are not birds; it only partially rejects birds outside the
 200, and the numbers for both are printed in the app.
 
+**Name the birds it was never trained on.** When the gate rejects a photo or
+confidence drops below 60%, a second model gets a say. BioCLIP scores the image
+against species *names* rather than a fixed class list, so its vocabulary is a data
+file — 6,423 birds, 32× the trained model's reach. A macaw that the classifier
+calls "White-breasted Kingfisher, 15%" comes back correctly named. Measured on 130
+photos of 26 species deliberately outside the 200: **79% top-1** where the species
+was in vocabulary, **91.5% precision** among the answers it commits to. It runs
+locally and is optional.
+
+**Collect them.** Every photo files itself into a deck, one card per species,
+Pokédex-style — no save button. Two sides: **The 200** the classifier covers, shown
+as a completable grid with locked cards for what you have not found, and **New
+birds** for everything the second model named from outside those 200. Photograph
+the same bird twice and you get one card reading "×2", with the better photo kept.
+When neither model is confident, nothing is filed and the app tells you why; a
+wrong card is worse than a missing one.
+
 **Identify by call.** BirdNET (Cornell Lab) covers ~6,500 species, so the Listen
 view can name birds the photo model cannot — and it tells you which. Sixteen
 Creative-Commons clips ship with the project so you can try it immediately.
@@ -34,8 +52,8 @@ grounded chat, and the answer is spoken back.
 knowledge base. Facts are supplied from the knowledge base and echoed, never
 recalled from the model, so sizes and conservation statuses cannot be invented.
 
-**Life list.** Save sightings to a local SQLite file: progress over the 200
-species, family breakdown, timeline with thumbnails.
+**Life list.** Every encounter is logged to a local SQLite file alongside the deck —
+the deck dedupes by species, the log keeps the history.
 
 ## Accuracy: read this first
 
@@ -86,8 +104,20 @@ pip3 install -r requirements-llm.txt
 ollama pull qwen3:8b && ollama serve
 ```
 
-Without Ollama everything still works; those three features fall back to template
-text built from the knowledge base and are labelled as such.
+Optional, to name birds outside the trained 200:
+
+```bash
+pip3 install -r requirements-verify.txt
+python3 scripts/eval_verifier.py       # measures accuracy, fits the threshold
+```
+
+First use downloads ~400 MB of BioCLIP weights from HuggingFace and caches them.
+That download is the project's only network dependency and it happens once —
+inference afterwards is fully offline.
+
+Without either extra everything still works. The LLM features fall back to template
+text from the knowledge base, verification reports `ran: false`, and both are
+labelled as such in the UI.
 
 ## Running
 
@@ -117,7 +147,8 @@ bird_eval.py      slow offline harnesses (metrics, calibration)
 api.py            FastAPI — the interface the dashboard talks to
 services/
   llm.py          Ollama: narration, grounded chat, comparison
-  sightings.py    SQLite life list
+  verifier.py     BioCLIP: open-vocabulary ID for birds outside the 200
+  sightings.py    SQLite life list + the deck
 bird_complete_local.py   Gradio UI
 bird-frontend/    React dashboard
 ```
@@ -139,25 +170,29 @@ laptop: each worker would load its own copy of the checkpoint.
 | `scripts/make_split.py` | Official CUB split with hashed manifests |
 | `train.py` | Train an auditable checkpoint (Colab notebook in `notebooks/`) |
 | `scripts/fit_openset.py` | Fit the open-set threshold; sweeps four score families and picks by AUROC |
+| `scripts/eval_verifier.py` | Measure the open-vocabulary verifier on 26 non-CUB species, fit its threshold |
 | `scripts/build_species_kb.py` | Generate the species knowledge base via Ollama |
 | `scripts/validate_kb.py` | Gate the knowledge base (placeholders, IUCN values, binomials) |
 | `scripts/download_bird_audio.py` | Fetch CC-licensed calls from Wikimedia |
 | `scripts/download_openset_photos.py` | Fetch the in-distribution and OOD photo sets |
 
 Rerun `fit_openset.py` after changing the checkpoint — the logit scale is
-checkpoint-specific, and a stale threshold silently rejects real birds.
+checkpoint-specific, and a stale threshold silently rejects real birds. Rerun
+`eval_verifier.py` if the BirdNET label file or the prompt template changes.
 
 ## Tests
 
 ```bash
-python3 -m pytest              # 50 tests, ~15s from cold
+python3 -m pytest              # 77 tests, ~15s from cold
 ```
 
 `tests/test_core_schema.py` pins the result-dict contract that four consumers
-read, and covers the open-set gate end to end. `tests/test_api.py` covers the
-HTTP surface with `TestClient` and the LLM stubbed, including that a missing
-Ollama daemon degrades rather than 500s. Tests that need the gitignored datasets
-skip rather than fail, and the life list is redirected to a scratch database.
+read, and covers the open-set gate end to end. `tests/test_deck.py` covers all four
+routing branches, species-level dedupe, and that new birds never inflate progress
+over the 200. `tests/test_api.py` covers the HTTP surface with `TestClient` and both
+the LLM and the verifier stubbed, including that a missing Ollama daemon or a
+missing BioCLIP degrades rather than 500s. Tests that need the gitignored datasets
+skip rather than fail, and the deck is redirected to a scratch database.
 
 Frontend: `cd bird-frontend && npx eslint src && npm run build`.
 
@@ -171,6 +206,8 @@ Frontend: `cd bird-frontend && npx eslint src && npm run build`.
 | `BIRD_DB_PATH` | `data/sightings.db` | Life-list database |
 | `BIRD_LLM_MODEL` | `qwen3:8b` | Ollama model |
 | `BIRD_LLM_KEEP_ALIVE` | `15m` | How long Ollama holds the weights |
+| `BIRD_VERIFIER_MODEL` | `hf-hub:imageomics/bioclip` | Open-vocabulary model |
+| `BIRD_VERIFY_BELOW` | `0.60` | Confidence under which the verifier is consulted |
 
 ## Credits and licensing
 
@@ -179,6 +216,10 @@ Frontend: `cd bird-frontend && npx eslint src && npm run build`.
 - **Audio and open-set photos** — Wikimedia Commons, all CC or public domain.
   Attribution for every file is in `bird_audio_samples/manifest.json` and
   `data/openset/manifest.json`, which are committed for exactly that reason.
+- **BioCLIP** — Stevens et al. 2024, `imageomics/bioclip`. Candidate species names
+  come from BirdNET's label file, filtered to birds: it is a sound model, so it also
+  lists 92 frogs, crickets and katydids, and unfiltered a Bald Eagle ranked as
+  "Honey Bee".
 - **Open-set scoring** — max-softmax (Hendrycks & Gimpel 2017), energy
   (Liu et al. 2020). Energy is the usual recommendation and measures *worse than
   random* on this checkpoint; softmax entropy wins here. The script measures

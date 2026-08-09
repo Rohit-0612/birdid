@@ -285,3 +285,144 @@ def test_thumbnail_path_blocks_traversal():
     assert sightings.thumbnail_path("../../../etc/passwd") is None
     assert sightings.thumbnail_path("") is None
     assert sightings.thumbnail_path(None) is None
+
+
+# ════════════════════════════════════════════════════════════
+# VERIFICATION + DECK
+# ════════════════════════════════════════════════════════════
+@pytest.fixture
+def stub_verifier(monkeypatch):
+    """Replace BioCLIP with a canned answer — the real model costs 400 MB and ~1s."""
+    from services import verifier
+
+    calls = []
+
+    def fake_identify(image, topk=5):
+        calls.append(image)
+        return {
+            "ran": True, "model": "stub", "species_considered": 6423,
+            "top": [{"common_name": "Scarlet Macaw", "scientific_name": "Ara macao",
+                     "similarity": 0.36, "score": 0.9, "margin": 0.05}],
+            "best": {"common_name": "Scarlet Macaw", "scientific_name": "Ara macao",
+                     "similarity": 0.36, "score": 0.9, "margin": 0.05},
+            "confident": True, "in_cub_200": False, "cub_folder": None,
+            "threshold": {"min_score": 0.33},
+        }
+
+    monkeypatch.setattr(verifier, "identify", fake_identify)
+    return calls
+
+
+def test_identify_defaults_are_unchanged_for_existing_callers(client, bird_bytes):
+    """Gradio and bird_text call this with no flags; register must stay off."""
+    body = client.post("/api/identify",
+                       files={"image": ("b.jpg", bird_bytes, "image/jpeg")}).json()
+    assert body["deck"] is None
+    # The pre-existing keys are all still present and unmoved.
+    assert {"species", "confidence", "top5", "info", "openset", "provenance"} <= set(body)
+
+
+def test_verification_is_skipped_on_a_confident_bird(client, bird_bytes, stub_verifier):
+    body = client.post("/api/identify",
+                       files={"image": ("b.jpg", bird_bytes, "image/jpeg")}).json()
+    if body["confidence"] >= api.VERIFY_BELOW_CONFIDENCE and body["openset"]["is_bird"]:
+        assert body["verification"] is None
+        assert not stub_verifier, "the verifier ran when it was not needed"
+
+
+def test_verify_false_never_consults_the_verifier(client, bird_bytes, stub_verifier):
+    body = client.post("/api/identify",
+                       data={"verify": "false"},
+                       files={"image": ("b.jpg", bird_bytes, "image/jpeg")}).json()
+    assert body["verification"] is None
+    assert not stub_verifier
+
+
+def test_low_confidence_triggers_verification_and_files_a_new_bird(client, stub_verifier, monkeypatch):
+    """The end-to-end path for a bird outside the 200."""
+    import bird_core
+
+    real = bird_core.identify_image
+
+    def unconfident(image, topk=5):
+        out = real(image, topk=topk)
+        out["confidence"] = 0.12
+        out["confidence_band"] = "low"
+        out["openset"] = {**out["openset"], "enabled": True, "is_bird": False}
+        return out
+
+    monkeypatch.setattr(bird_core, "identify_image", unconfident)
+
+    body = client.post("/api/identify",
+                       data={"add_to_deck": "true"},
+                       files={"image": ("b.jpg", _png_bytes(), "image/png")}).json()
+
+    assert stub_verifier, "the verifier should have been consulted"
+    assert body["verification"]["ran"] is True
+    assert "rejected by the open-set gate" in body["verification"]["reason"]
+    entry = body["deck"]["entry"]
+    assert entry["source"] == "external"
+    assert entry["display_name"] == "Scarlet Macaw"
+    client.delete(f"/api/deck/{entry['key']}")
+
+
+def test_a_missing_verifier_degrades_instead_of_500ing(client, monkeypatch):
+    from services import verifier
+    import bird_core
+
+    real = bird_core.identify_image
+
+    def unconfident(image, topk=5):
+        out = real(image, topk=topk)
+        out["confidence"] = 0.10
+        return out
+
+    monkeypatch.setattr(bird_core, "identify_image", unconfident)
+    monkeypatch.setattr(verifier, "identify", lambda *a, **k: (_ for _ in ()).throw(
+        verifier.VerifierUnavailable("open_clip_torch not installed")))
+
+    res = client.post("/api/identify", files={"image": ("b.jpg", _png_bytes(), "image/png")})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["verification"]["ran"] is False
+    assert "open_clip" in body["verification"]["error"]
+
+
+def test_registering_the_same_bird_twice_yields_one_card(client, bird_bytes):
+    first = client.post("/api/identify", data={"add_to_deck": "true", "verify": "false"},
+                        files={"image": ("b.jpg", bird_bytes, "image/jpeg")}).json()
+    if first["deck"]["entry"] is None:
+        pytest.skip("this checkpoint was not confident enough to file the fixture image")
+
+    second = client.post("/api/identify", data={"add_to_deck": "true", "verify": "false"},
+                         files={"image": ("b.jpg", bird_bytes, "image/jpeg")}).json()
+    assert first["deck"]["created"] is True
+    assert second["deck"]["created"] is False
+    assert second["deck"]["entry"]["encounters"] == 2
+
+    deck = client.get("/api/deck").json()
+    keys = [e["key"] for e in deck["cub"]]
+    assert len(keys) == len(set(keys))
+    client.delete(f"/api/deck/{second['deck']['entry']['key']}")
+
+
+def test_deck_endpoint_shape(client):
+    body = client.get("/api/deck").json()
+    assert set(body) == {"cub", "external", "stats"}
+    assert body["stats"]["total_species"] == 200
+
+
+def test_deck_delete_404s_on_an_unknown_key(client):
+    assert client.delete("/api/deck/nope.Not_A_Bird").status_code == 404
+
+
+def test_deck_register_validates_its_payload(client):
+    assert client.post("/api/deck/register", data={"result": "not json{"}).status_code == 400
+    assert client.post("/api/deck/register",
+                       data={"result": '{"no":"species"}'}).status_code == 400
+
+
+def test_health_reports_the_verifier(client):
+    body = client.get("/api/health").json()
+    assert "verifier" in body
+    assert "triggers_below_confidence" in body["verifier"]

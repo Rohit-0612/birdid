@@ -34,7 +34,7 @@ export const health = () => fetch('/api/health').then(json)
 export function identify(file, { register = true, verify = true } = {}) {
   const body = new FormData()
   body.append('image', file)
-  body.append('register', String(register))
+  body.append('add_to_deck', String(register))
   body.append('verify', String(verify))
   return fetch('/api/identify', { method: 'POST', body }).then(json)
 }

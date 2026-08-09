@@ -171,14 +171,17 @@ def health():
 async def identify(
     image: UploadFile = File(...),
     verify: bool = Form(True),
-    register: bool = Form(False),
+    add_to_deck: bool = Form(False),
 ):
     """Identify a bird from a photo, optionally verifying and filing it in the deck.
 
     Both extras happen in this one request because the image is already in hand —
-    a separate register call would mean uploading the photo twice. `register`
+    a separate register call would mean uploading the photo twice. `add_to_deck`
     defaults to false so the Gradio app, bird_text and the existing tests see
     exactly the previous behaviour; the dashboard sends true.
+
+    Named `add_to_deck` rather than `register` because pydantic warns that a body
+    field called `register` shadows an attribute on BaseModel.
     """
     data = await _read_upload(image)
     pil = _open_image(data)
@@ -186,7 +189,7 @@ async def identify(
 
     result["verification"] = _verify(pil, result) if verify else None
 
-    if register:
+    if add_to_deck:
         thumb = sightings.save_thumbnail(pil, uuid.uuid4().hex[:12])
         outcome = sightings.deck_register(result, result["verification"], thumb=thumb)
         # Nothing was filed, so the thumbnail we just wrote is an orphan.
