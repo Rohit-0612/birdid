@@ -32,7 +32,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from PIL import Image, UnidentifiedImageError
 
 import bird_core
-from services import llm, sightings
+from services import llm, sightings, verifier
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLES_DIR = os.path.join(PROJECT_DIR, "bird_audio_samples")
@@ -47,6 +47,13 @@ ALLOWED_ORIGINS = [
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
+# Below this confidence the classifier's own answer is not trusted on its own and
+# the open-vocabulary verifier gets a say. Measured justification: across the 541
+# labelled open-set photos, a <60% rule catches 98% of birds outside the 200 — at
+# the cost of also firing on 59% of correct identifications, which is affordable
+# only because the verifier is local. See services/verifier.py.
+VERIFY_BELOW_CONFIDENCE = float(os.environ.get("BIRD_VERIFY_BELOW", "0.60"))
+
 
 @asynccontextmanager
 async def lifespan(app):
@@ -56,6 +63,12 @@ async def lifespan(app):
     status = llm.available()
     print(f"🤖 Ollama {'ready' if status['ok'] else 'unavailable'} — "
           f"{status.get('reason', status['model'])}")
+    verify_status = verifier.available()
+    if verify_status["ok"]:
+        print(f"🔍 Verifier ready — {verify_status['species']} species, loads on "
+              f"first use (below {VERIFY_BELOW_CONFIDENCE:.0%} confidence)")
+    else:
+        print(f"🔍 Verifier unavailable — {verify_status['reason']}")
     yield
 
 
@@ -98,23 +111,97 @@ def _species_or_404(folder):
     return bird_core.species_detail(folder)
 
 
+def _verification_reason(result):
+    """Why the verifier should run on this result, or None to skip it.
+
+    Two triggers with complementary error profiles. The open-set gate is the precise
+    one (flags every non-bird, only 5% false alarms) and the confidence bar is the
+    sensitive one (catches 98% of birds outside the 200). Either is enough.
+    """
+    gate = result.get("openset") or {}
+    if gate.get("enabled") and not gate.get("is_bird", True):
+        return "rejected by the open-set gate"
+    if (result.get("confidence") or 0.0) < VERIFY_BELOW_CONFIDENCE:
+        return f"confidence below {VERIFY_BELOW_CONFIDENCE:.0%}"
+    return None
+
+
+def _verify(pil_image, result):
+    """Run the open-vocabulary verifier when warranted. Never raises.
+
+    Returns None when nothing triggered it, or a dict that always carries `ran` so
+    the UI can tell "not needed" from "could not run".
+    """
+    reason = _verification_reason(result)
+    if reason is None:
+        return None
+    try:
+        payload = verifier.identify(pil_image)
+        payload["reason"] = reason
+        classifier_folder = (result.get("species") or {}).get("folder")
+        payload["agrees_with_classifier"] = (
+            payload.get("cub_folder") == classifier_folder
+            if payload.get("cub_folder") and classifier_folder else None
+        )
+        return payload
+    except verifier.VerifierUnavailable as e:
+        return {"ran": False, "reason": reason, "error": str(e)}
+    except Exception as e:
+        return {"ran": False, "reason": reason, "error": f"{type(e).__name__}: {e}"}
+
+
 # ════════════════════════════════════════════════════════════
 # STATUS
 # ════════════════════════════════════════════════════════════
 @app.get("/api/health")
 def health():
-    """Model, device, knowledge base, open-set gate and LLM status in one call."""
-    return {**bird_core.health(), "llm": llm.available()}
+    """Model, device, knowledge base, open-set gate, LLM and verifier in one call."""
+    return {
+        **bird_core.health(),
+        "llm": llm.available(),
+        "verifier": {**verifier.available(),
+                     "triggers_below_confidence": VERIFY_BELOW_CONFIDENCE},
+    }
 
 
 # ════════════════════════════════════════════════════════════
 # IDENTIFICATION
 # ════════════════════════════════════════════════════════════
 @app.post("/api/identify")
-async def identify(image: UploadFile = File(...)):
-    """Identify a bird from a photo."""
+async def identify(
+    image: UploadFile = File(...),
+    verify: bool = Form(True),
+    register: bool = Form(False),
+):
+    """Identify a bird from a photo, optionally verifying and filing it in the deck.
+
+    Both extras happen in this one request because the image is already in hand —
+    a separate register call would mean uploading the photo twice. `register`
+    defaults to false so the Gradio app, bird_text and the existing tests see
+    exactly the previous behaviour; the dashboard sends true.
+    """
     data = await _read_upload(image)
-    return bird_core.identify_image(_open_image(data))
+    pil = _open_image(data)
+    result = bird_core.identify_image(pil)
+
+    result["verification"] = _verify(pil, result) if verify else None
+
+    if register:
+        thumb = sightings.save_thumbnail(pil, uuid.uuid4().hex[:12])
+        outcome = sightings.deck_register(result, result["verification"], thumb=thumb)
+        # Nothing was filed, so the thumbnail we just wrote is an orphan.
+        if outcome["entry"] is None:
+            stale = sightings.thumbnail_path(thumb)
+            if stale:
+                try:
+                    os.remove(stale)
+                except OSError:
+                    pass
+        result["deck"] = outcome
+    else:
+        result["deck"] = None
+
+    return result
 
 
 @app.post("/api/identify/audio")
@@ -344,6 +431,70 @@ def delete_sighting(sighting_id: str):
 @app.get("/api/sightings/stats")
 def sighting_stats():
     return sightings.stats(all_species_folders=bird_core.CLASS_NAMES)
+
+
+# ════════════════════════════════════════════════════════════
+# THE DECK
+# ════════════════════════════════════════════════════════════
+@app.get("/api/deck")
+def deck():
+    """Both sides of the collection plus progress, in one call for the deck view."""
+    sides = sightings.deck_list()
+    return {**sides,
+            "stats": sightings.deck_stats(all_species_folders=bird_core.CLASS_NAMES)}
+
+
+@app.get("/api/deck/stats")
+def deck_stats():
+    return sightings.deck_stats(all_species_folders=bird_core.CLASS_NAMES)
+
+
+@app.post("/api/deck/register")
+async def deck_register(
+    result: str = Form(...),
+    force: bool = Form(False),
+    image: UploadFile = File(None),
+):
+    """File an identification into the deck by hand.
+
+    Backs the "add it anyway" action offered when neither the classifier nor the
+    verifier was confident enough to file it automatically.
+    """
+    try:
+        parsed = json.loads(result)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "result must be valid JSON") from None
+    if not isinstance(parsed, dict) or not parsed.get("species"):
+        raise HTTPException(400, "result does not look like an identification")
+
+    thumb = None
+    if image is not None:
+        data = await _read_upload(image)
+        thumb = sightings.save_thumbnail(_open_image(data), uuid.uuid4().hex[:12])
+
+    return sightings.deck_register(parsed, parsed.get("verification"),
+                                   thumb=thumb, force=force)
+
+
+@app.delete("/api/deck/{key}")
+def deck_delete(key: str):
+    """Remove a card. Plain {key}, not {key:path}: deck keys ("073.Blue_Jay",
+    "ext:Ara macao") never contain a slash, and the greedy path convertor would
+    happily swallow the /thumb suffix of the route below."""
+    if not sightings.deck_delete(key):
+        raise HTTPException(404, "no such card")
+    return JSONResponse({"deleted": key})
+
+
+@app.get("/api/deck/{key}/thumb")
+def deck_thumb(key: str):
+    entry = sightings.deck_get(key)
+    if not entry:
+        raise HTTPException(404, "no such card")
+    path = sightings.thumbnail_path(entry.get("thumb"))
+    if not path:
+        raise HTTPException(404, "no photo for that card")
+    return FileResponse(path, media_type="image/jpeg")
 
 
 @app.get("/api/sightings/{sighting_id}/thumb")

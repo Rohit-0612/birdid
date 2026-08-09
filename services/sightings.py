@@ -1,14 +1,22 @@
-"""The life list — every identification you choose to keep.
+"""The life list and the deck — what you have seen, and what you have collected.
 
-Birders keep a life list: the running record of every species they have
-personally seen. Until now every identification this app made was thrown away
-the moment the next photo was uploaded, which is what made it a demo rather
-than a tool. This is a SQLite table plus thumbnails, no ORM, no migrations
-framework — one file, one schema, `CREATE TABLE IF NOT EXISTS` on open.
+Two tables, because they answer two different questions:
 
-Deliberately *not* one row per species: the same bird seen twice is two
-sightings on two dates, and the interesting stats (how many of the 200 have you
-found, what did you see this month) are derived, not stored.
+`sightings` is the **event log**: one row per identification you keep, with its
+date and confidence. "What did I see last Tuesday" and "how many sightings this
+month" come from here.
+
+`deck` is the **collection**: one row per *species*, Pokédex-style. The first photo
+of a bird creates its card; later photos bump the encounter count and can improve
+the card's photo. "How many of the 200 have I found" comes from here, and it is why
+uploading the same pigeon ten times yields one card rather than ten.
+
+The deck has two sides. Birds the trained classifier recognises land in the `cub`
+side; birds identified by the open-vocabulary verifier (services/verifier.py) land
+in `external`, keyed on scientific name. Routing lives in `deck_key_for()`.
+
+No ORM and no migration framework — one file, `CREATE TABLE IF NOT EXISTS` on open,
+so an existing database picks up the new table without ceremony.
 """
 
 import json
@@ -39,6 +47,24 @@ CREATE TABLE IF NOT EXISTS sightings (
 );
 CREATE INDEX IF NOT EXISTS idx_sightings_ts     ON sightings(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_sightings_folder ON sightings(folder);
+
+CREATE TABLE IF NOT EXISTS deck (
+    key              TEXT PRIMARY KEY,   -- '073.Blue_Jay' | 'ext:Ara macao'
+    source           TEXT NOT NULL CHECK (source IN ('cub', 'external')),
+    display_name     TEXT NOT NULL,
+    scientific_name  TEXT,
+    family           TEXT,
+    "order"          TEXT,
+    first_seen       TEXT NOT NULL,
+    last_seen        TEXT NOT NULL,
+    encounters       INTEGER NOT NULL DEFAULT 1,
+    thumb            TEXT,
+    best_confidence  REAL,
+    identified_by    TEXT,               -- 'cub' | 'verifier'
+    agreed           INTEGER             -- 1/0 when both models ran, else NULL
+);
+CREATE INDEX IF NOT EXISTS idx_deck_source ON deck(source);
+CREATE INDEX IF NOT EXISTS idx_deck_first  ON deck(first_seen DESC);
 """
 
 
@@ -204,3 +230,214 @@ def stats(all_species_folders=None):
 def export_json():
     """The whole list, for backup or for moving to a real birding app."""
     return json.dumps(list_all(limit=10**6)["sightings"], indent=2)
+
+
+# ════════════════════════════════════════════════════════════
+# THE DECK — one card per species
+# ════════════════════════════════════════════════════════════
+# Confidence below which the classifier's own answer is not trusted on its own and
+# the verifier's opinion decides. Matches the API's verification trigger.
+TRUST_CONFIDENCE = 0.60
+
+
+def deck_key_for(result, verification=None, trust_confidence=TRUST_CONFIDENCE):
+    """Decide which card an identification belongs to, or None to register nothing.
+
+    Four outcomes, in priority order:
+
+    1. The classifier is trusted — the open-set gate accepted the photo and
+       confidence clears the bar — so the card is its species.
+    2. The classifier is not trusted but the verifier is confident, and the species
+       it names *is* one of the 200. The verifier has corrected the pick; the card is
+       still on the CUB side, under the corrected species.
+    3. The verifier is confident about a species outside the 200 — a new bird.
+    4. Neither is confident. Register nothing rather than guess: a wrong card is
+       worse than a missing one, because the deck is meant to be a record.
+
+    Returns (key, source, fields) or (None, None, reason).
+    """
+    species = result.get("species") or {}
+    gate = result.get("openset") or {}
+    confidence = result.get("confidence") or 0.0
+
+    gate_ok = gate.get("is_bird", True)
+    classifier_trusted = gate_ok and confidence >= trust_confidence
+
+    if classifier_trusted and species.get("folder"):
+        info = result.get("info") or {}
+        return species["folder"], "cub", {
+            "display_name":    species.get("display_name") or species["folder"],
+            "scientific_name": species.get("scientific_name"),
+            "family":          species.get("family") or info.get("family"),
+            "order":           species.get("order") or info.get("order"),
+            "best_confidence": confidence,
+            "identified_by":   "cub",
+        }
+
+    verified = verification or {}
+    if verified.get("ran") and verified.get("confident") and verified.get("best"):
+        best = verified["best"]
+        if verified.get("cub_folder"):
+            return verified["cub_folder"], "cub", {
+                "display_name":    best["common_name"],
+                "scientific_name": best["scientific_name"],
+                "family":          None,
+                "order":           None,
+                "best_confidence": best.get("similarity"),
+                "identified_by":   "verifier",
+            }
+        return f"ext:{best['scientific_name']}", "external", {
+            "display_name":    best["common_name"],
+            "scientific_name": best["scientific_name"],
+            "family":          None,
+            "order":           None,
+            "best_confidence": best.get("similarity"),
+            "identified_by":   "verifier",
+        }
+
+    if not gate_ok and not verified.get("ran"):
+        return None, None, "rejected by the open-set gate and no verifier available"
+    if not gate_ok:
+        return None, None, "not one of the 200, and the verifier could not name it"
+    return None, None, (f"confidence {confidence:.0%} is below the "
+                        f"{trust_confidence:.0%} bar and the verifier could not name it")
+
+
+def deck_register(result, verification=None, thumb=None, force=False):
+    """Add or update this species' card. Returns {entry, created, reason}.
+
+    On a repeat encounter the counter goes up, `last_seen` moves, and the thumbnail
+    is replaced **only if the new photo scored higher** — so a card drifts toward
+    your best shot of a bird rather than your most recent one.
+    """
+    key, source, extra = deck_key_for(result, verification)
+    if key is None:
+        if not force:
+            return {"entry": None, "created": False, "reason": extra}
+        # Manual "add anyway": fall back to whatever the classifier said.
+        species = result.get("species") or {}
+        key = species.get("folder") or f"ext:{species.get('display_name', 'unknown')}"
+        source = "cub" if species.get("folder") else "external"
+        extra = {
+            "display_name":    species.get("display_name") or "Unknown",
+            "scientific_name": species.get("scientific_name"),
+            "family":          species.get("family"),
+            "order":           species.get("order"),
+            "best_confidence": result.get("confidence"),
+            "identified_by":   "manual",
+        }
+
+    verified = verification or {}
+    agreed = None
+    if verified.get("ran") and verified.get("cub_folder") and (result.get("species") or {}).get("folder"):
+        agreed = int(verified["cub_folder"] == result["species"]["folder"])
+
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    new_confidence = extra.get("best_confidence")
+
+    with _connect() as conn:
+        existing = conn.execute("SELECT * FROM deck WHERE key = ?", (key,)).fetchone()
+
+        if existing is None:
+            conn.execute(
+                'INSERT INTO deck (key, source, display_name, scientific_name, '
+                'family, "order", first_seen, last_seen, encounters, thumb, '
+                'best_confidence, identified_by, agreed) '
+                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)',
+                (key, source, extra["display_name"], extra["scientific_name"],
+                 extra["family"], extra["order"], now, now, thumb,
+                 new_confidence, extra["identified_by"], agreed),
+            )
+            created = True
+        else:
+            old_confidence = existing["best_confidence"]
+            better = (new_confidence is not None
+                      and (old_confidence is None or new_confidence > old_confidence))
+            conn.execute(
+                'UPDATE deck SET last_seen = ?, encounters = encounters + 1, '
+                'thumb = CASE WHEN ? THEN ? ELSE thumb END, '
+                'best_confidence = CASE WHEN ? THEN ? ELSE best_confidence END, '
+                'family = COALESCE(family, ?), "order" = COALESCE("order", ?), '
+                'scientific_name = COALESCE(scientific_name, ?), '
+                'agreed = COALESCE(?, agreed) '
+                'WHERE key = ?',
+                (now,
+                 1 if (better and thumb) else 0, thumb,
+                 1 if better else 0, new_confidence,
+                 extra["family"], extra["order"], extra["scientific_name"],
+                 agreed, key),
+            )
+            created = False
+
+            # A superseded thumbnail would otherwise leak a file per encounter.
+            if better and thumb and existing["thumb"] and existing["thumb"] != thumb:
+                stale = thumbnail_path(existing["thumb"])
+                if stale:
+                    try:
+                        os.remove(stale)
+                    except OSError:
+                        pass
+
+    return {"entry": deck_get(key), "created": created, "reason": None}
+
+
+def deck_get(key):
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM deck WHERE key = ?", (key,)).fetchone()
+    return _deck_row(row) if row else None
+
+
+def _deck_row(row):
+    entry = dict(row)
+    entry["agreed"] = None if entry["agreed"] is None else bool(entry["agreed"])
+    return entry
+
+
+def deck_list():
+    """Both sides of the deck, newest discovery first."""
+    with _connect() as conn:
+        rows = [_deck_row(r) for r in
+                conn.execute("SELECT * FROM deck ORDER BY first_seen DESC").fetchall()]
+    return {
+        "cub":      [r for r in rows if r["source"] == "cub"],
+        "external": [r for r in rows if r["source"] == "external"],
+    }
+
+
+def deck_delete(key):
+    entry = deck_get(key)
+    if not entry:
+        return False
+    with _connect() as conn:
+        conn.execute("DELETE FROM deck WHERE key = ?", (key,))
+    path = thumbnail_path(entry.get("thumb"))
+    if path:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    return True
+
+
+def deck_stats(all_species_folders=None):
+    """Collection progress. `all_species_folders` is the model's class list."""
+    sides = deck_list()
+    total = len(all_species_folders) if all_species_folders else None
+    found = len(sides["cub"])
+
+    by_family = {}
+    for entry in sides["cub"] + sides["external"]:
+        name = entry["family"] or "Unknown"
+        by_family[name] = by_family.get(name, 0) + 1
+
+    encounters = sum(e["encounters"] for e in sides["cub"] + sides["external"])
+    return {
+        "found":            found,
+        "total_species":    total,
+        "progress":         (found / total) if total else None,
+        "new_birds":        len(sides["external"]),
+        "total_encounters": encounters,
+        "by_family":        dict(sorted(by_family.items(), key=lambda kv: -kv[1])),
+        "most_seen":        max((sides["cub"] + sides["external"]),
+                                key=lambda e: e["encounters"], default=None),
+    }
