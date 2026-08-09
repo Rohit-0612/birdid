@@ -29,9 +29,16 @@ start() {
         return 0
     fi
     # Clear a stale pidfile, and warn if something else holds the port.
+    #
+    # -sTCP:LISTEN matters: a bare `lsof -ti:PORT` also matches *client* sockets
+    # to that port, including the CLOSED ones VS Code leaves behind after it
+    # auto-forwards a detected port. That made start() refuse to run against a
+    # port nothing was actually listening on.
     rm -f "$PIDFILE"
-    if lsof -ti:"$PORT" >/dev/null 2>&1; then
-        echo "Port $PORT is already in use by PID $(lsof -ti:"$PORT" | tr '\n' ' ')" >&2
+    local holders
+    holders="$(lsof -ti:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
+    if [[ -n "$holders" ]]; then
+        echo "Port $PORT is already in use by PID $(echo "$holders" | tr '\n' ' ')" >&2
         echo "Run './run.sh stop' or free the port first." >&2
         return 1
     fi
