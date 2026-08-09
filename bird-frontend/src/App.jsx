@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import {
-  AudioLines, BookMarked, Bird, Mic, MicOff, ScanSearch, ShieldQuestion,
-  Volume2, VolumeX,
+  AudioLines, BookMarked, Bird, Mic, MicOff, Moon, ScanSearch, ShieldQuestion,
+  Sun, Volume2, VolumeX,
 } from 'lucide-react'
 
-import DotField from './components/DotField'
 import { Chip } from './components/primitives'
+import { Canopy } from './components/nature/Canopy'
+import { Feathers } from './components/nature/Feathers'
+import { HeroBird } from './components/nature/HeroBird'
+import { useTheme } from './hooks/useTheme'
 import { IdentifyView } from './views/IdentifyView'
 import { ListenView } from './views/ListenView'
 import { GuideView } from './views/GuideView'
@@ -30,6 +34,7 @@ export default function App() {
   const [toast, setToast] = useState(null)
 
   const speech = useSpeech()
+  const { theme, toggleTheme } = useTheme()
 
   // The active view registers a handler for the commands it owns. Held in a ref
   // so a spoken command dispatches as an event rather than as state a child has
@@ -86,17 +91,28 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen">
-      {/* DotField measures its parent and sizes itself to 100% of it, so it needs
-          a container with a resolvable height — inside an auto-height wrapper it
-          would compute to zero and render nothing. Fixed and inset-0 gives it the
-          viewport, and pointer-events-none keeps it from eating clicks (it tracks
-          the cursor on window, so it still reacts). */}
+      {/* The ambient layer: parallax canopy behind, feathers drifting through.
+          Fixed and inset-0 so children have a resolvable height, pointer-events-none
+          so it never eats a click. */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
-        <DotField />
+        <Canopy />
+        <Feathers />
       </div>
 
       <div className="relative z-10 mx-auto max-w-[1500px] px-4 pb-16 sm:px-6">
-        <Header health={health} speech={speech} voice={voice} />
+        {/* Birds fly across the header only. Confining them to the hero keeps them
+            from crossing behind text further down the page, where movement in the
+            corner of your eye competes with reading. */}
+        <div className="relative">
+          <HeroBird className="-inset-x-6 -bottom-4 [top:-1rem]" />
+          <Header
+            health={health}
+            speech={speech}
+            voice={voice}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
+        </div>
 
         <nav className="mb-6 flex gap-1 overflow-x-auto pb-1" aria-label="Views">
           {VIEWS.map(({ id, label, icon: Icon }) => (
@@ -106,8 +122,8 @@ export default function App() {
               aria-current={view === id ? 'page' : undefined}
               className={`inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
                 view === id
-                  ? 'bg-(--color-accent)/15 text-(--color-accent-bright)'
-                  : 'text-(--color-ink-faint) hover:bg-(--color-surface)/60 hover:text-(--color-ink-soft)'
+                  ? 'bg-(--color-accent)/14 text-(--color-accent-hover) shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_28%,transparent)]'
+                  : 'text-(--color-ink-faint) hover:-translate-y-px hover:bg-(--color-surface) hover:text-(--color-ink-soft) hover:shadow-[var(--shadow-soft)]'
               }`}
             >
               <Icon size={15} strokeWidth={2} />
@@ -117,22 +133,35 @@ export default function App() {
         </nav>
 
         <main>
-          {view === 'identify' && (
-            <IdentifyView
-              speech={speech}
-              registerVoiceHandler={registerVoiceHandler}
-              onGoto={goto}
-            />
-          )}
-          {view === 'listen' && <ListenView speech={speech} />}
-          {view === 'guide' && <GuideView focusFolder={guideFocus} speech={speech} />}
-          {view === 'deck' && (
-            <div className="space-y-6">
-              <DeckView speech={speech} onGoto={goto} />
-              <RecentEncounters />
-            </div>
-          )}
-          {view === 'explain' && <ExplainView health={health} />}
+          {/* mode="wait" so the outgoing view finishes before the next arrives —
+              cross-fading two full dashboards at once looks like a glitch. Short
+              enough (180ms) that switching never feels like waiting. */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {view === 'identify' && (
+                <IdentifyView
+                  speech={speech}
+                  registerVoiceHandler={registerVoiceHandler}
+                  onGoto={goto}
+                />
+              )}
+              {view === 'listen' && <ListenView speech={speech} />}
+              {view === 'guide' && <GuideView focusFolder={guideFocus} speech={speech} />}
+              {view === 'deck' && (
+                <div className="space-y-6">
+                  <DeckView speech={speech} onGoto={goto} />
+                  <RecentEncounters />
+                </div>
+              )}
+              {view === 'explain' && <ExplainView health={health} />}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         <footer className="mt-12 border-t border-(--color-line) pt-5 text-xs text-(--color-ink-faint)">
@@ -173,14 +202,14 @@ export default function App() {
   )
 }
 
-function Header({ health, speech, voice }) {
+function Header({ health, speech, voice, theme, onToggleTheme }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 py-7">
       <div>
         <h1 className="font-display text-3xl leading-none text-(--color-ink) sm:text-4xl">
           Bird<span className="text-(--color-accent)">ID</span>
         </h1>
-        <p className="mt-2 text-sm text-(--color-ink-faint)">
+        <p className="mt-2 max-w-sm text-sm text-(--color-ink-soft)">
           Identify birds by photo or call, ask about them, collect them
         </p>
       </div>
@@ -208,7 +237,16 @@ function Header({ health, speech, voice }) {
         )}
 
         {/* ── Voice controls ── */}
-        <div className="flex items-center gap-1.5 rounded-full border border-(--color-line) bg-(--color-surface)/60 p-1">
+        <div className="card-glass flex items-center gap-1.5 rounded-full p-1">
+          <button
+            onClick={onToggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={theme === 'dark' ? 'Dark: forest at night' : 'Light: mint paper'}
+            className="cursor-pointer rounded-full p-2 text-(--color-ink-faint) transition-colors duration-200 hover:bg-(--color-sun)/15 hover:text-(--color-sun-ink)"
+          >
+            {theme === 'dark' ? <Moon size={16} strokeWidth={2} /> : <Sun size={16} strokeWidth={2} />}
+          </button>
+
           <button
             onClick={speech.toggleMute}
             disabled={!speech.supported}
@@ -223,7 +261,7 @@ function Header({ health, speech, voice }) {
             className={`cursor-pointer rounded-full p-2 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
               speech.muted
                 ? 'text-(--color-ink-faint) hover:text-(--color-ink-soft)'
-                : 'text-(--color-accent-bright) hover:bg-(--color-accent)/15'
+                : 'text-(--color-accent-hover) hover:bg-(--color-accent)/15'
             }`}
           >
             {speech.muted ? <VolumeX size={16} strokeWidth={2} /> : <Volume2 size={16} strokeWidth={2} />}
@@ -247,8 +285,8 @@ function Header({ health, speech, voice }) {
             }
             className={`cursor-pointer rounded-full p-2 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
               voice.listening
-                ? 'bg-(--color-accent) text-white'
-                : 'text-(--color-ink-faint) hover:bg-(--color-accent)/15 hover:text-(--color-accent-bright)'
+                ? 'bg-(--color-accent) text-(--color-on-accent)'
+                : 'text-(--color-ink-faint) hover:bg-(--color-accent)/15 hover:text-(--color-accent-hover)'
             }`}
           >
             {voice.supported ? <Mic size={16} strokeWidth={2} /> : <MicOff size={16} strokeWidth={2} />}

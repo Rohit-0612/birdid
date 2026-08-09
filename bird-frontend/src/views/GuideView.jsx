@@ -99,13 +99,13 @@ export function GuideView({ focusFolder, speech }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search 200 species by name, family or order…"
-            className="w-full rounded-lg border border-(--color-line) bg-(--color-void)/60 py-2 pr-3 pl-9 text-sm text-(--color-ink) placeholder:text-(--color-ink-faint) focus:border-(--color-accent)/50 focus:outline-none"
+            className="w-full rounded-lg border border-(--color-line) bg-(--color-raised) py-2 pr-3 pl-9 text-sm text-(--color-ink) placeholder:text-(--color-ink-faint) focus:border-(--color-accent)/50 focus:outline-none"
           />
         </div>
         <select
           value={familyFilter}
           onChange={(e) => setFamilyFilter(e.target.value)}
-          className="cursor-pointer rounded-lg border border-(--color-line) bg-(--color-void)/60 px-3 py-2 text-sm text-(--color-ink-soft) focus:border-(--color-accent)/50 focus:outline-none"
+          className="cursor-pointer rounded-lg border border-(--color-line) bg-(--color-raised) px-3 py-2 text-sm text-(--color-ink-soft) focus:border-(--color-accent)/50 focus:outline-none"
         >
           <option value="">All families ({families.length})</option>
           {families.map((family) => (
@@ -128,7 +128,7 @@ export function GuideView({ focusFolder, speech }) {
               <button
                 key={folder}
                 onClick={() => toggleTray(folder)}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-(--color-accent)/40 bg-(--color-accent)/10 px-2.5 py-1 text-xs text-(--color-accent-bright) transition-colors hover:bg-(--color-accent)/20"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-(--color-accent)/40 bg-(--color-accent)/10 px-2.5 py-1 text-xs text-(--color-accent-hover) transition-colors hover:bg-(--color-accent)/20"
               >
                 {catalogue.find((s) => s.folder === folder)?.display_name ?? folder}
                 <X size={11} strokeWidth={2.5} />
@@ -138,7 +138,7 @@ export function GuideView({ focusFolder, speech }) {
           <button
             onClick={runComparison}
             disabled={tray.length !== 2 || comparing}
-            className="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-(--color-accent-bright) disabled:cursor-not-allowed disabled:opacity-40"
+            className="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-(--color-on-accent) transition-colors duration-200 hover:bg-(--color-accent-hover) disabled:cursor-not-allowed disabled:opacity-40"
           >
             {comparing && <Loader2 size={14} className="animate-spin" />}
             {tray.length === 2 ? 'Compare these two' : 'Pick one more'}
@@ -186,7 +186,7 @@ export function GuideView({ focusFolder, speech }) {
                       title="Add to the comparison tray"
                       className={`shrink-0 cursor-pointer rounded-md border px-1.5 py-1 transition-colors duration-200 ${
                         tray.includes(s.folder)
-                          ? 'border-(--color-accent) text-(--color-accent-bright)'
+                          ? 'border-(--color-accent) text-(--color-accent-hover)'
                           : 'border-(--color-line) text-(--color-ink-faint) hover:border-(--color-accent)/50 hover:text-(--color-ink-soft)'
                       }`}
                     >

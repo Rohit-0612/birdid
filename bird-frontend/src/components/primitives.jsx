@@ -41,7 +41,10 @@ export function ConfidenceGauge({ value = 0, band = 'low', size = 168 }) {
           strokeLinecap="round"
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          transition={{
+            pathLength: { type: 'spring', stiffness: 42, damping: 14, mass: 0.9 },
+            opacity: { duration: 0.25 },
+          }}
         />
       </svg>
       <div className="absolute inset-x-0 bottom-0 text-center">
@@ -68,7 +71,7 @@ export function Bar({ label, value, sublabel, color = 'var(--color-accent)', hig
         <span
           className={`truncate text-sm transition-colors duration-200 ${
             highlight ? 'font-semibold text-(--color-ink)' : 'text-(--color-ink-soft)'
-          } ${onClick ? 'group-hover:text-(--color-accent-bright)' : ''}`}
+          } ${onClick ? 'group-hover:text-(--color-accent-hover)' : ''}`}
         >
           {label}
         </span>
@@ -82,7 +85,12 @@ export function Bar({ label, value, sublabel, color = 'var(--color-accent)', hig
           style={{ background: color }}
           initial={{ width: 0 }}
           animate={{ width: `${Math.max((value ?? 0) * 100, 1.5)}%` }}
-          transition={{ duration: 0.6, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
+          transition={{
+            type: 'spring',
+            stiffness: 90,
+            damping: 18,
+            delay: index * 0.05,
+          }}
         />
       </div>
     </Wrapper>
@@ -109,7 +117,7 @@ export function ProgressRing({ value = 0, size = 148, label, sublabel }) {
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference * (1 - Math.min(value, 1)) }}
-          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ type: 'spring', stiffness: 38, damping: 15, mass: 1.1 }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -123,7 +131,7 @@ export function ProgressRing({ value = 0, size = 148, label, sublabel }) {
 export function Chip({ children, tone = 'neutral', title }) {
   const tones = {
     neutral: 'border-(--color-line) text-(--color-ink-soft)',
-    accent: 'border-(--color-accent)/40 bg-(--color-accent)/10 text-(--color-accent-bright)',
+    accent: 'border-(--color-accent)/40 bg-(--color-accent)/10 text-(--color-accent-hover)',
     high: 'border-(--color-high)/40 bg-(--color-high)/10 text-(--color-high)',
     moderate: 'border-(--color-moderate)/40 bg-(--color-moderate)/10 text-(--color-moderate)',
     low: 'border-(--color-low)/40 bg-(--color-low)/10 text-(--color-low)',
@@ -131,7 +139,7 @@ export function Chip({ children, tone = 'neutral', title }) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.72rem] font-medium ${tones[tone] ?? tones.neutral}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.72rem] font-medium whitespace-nowrap ${tones[tone] ?? tones.neutral}`}
     >
       {children}
     </span>

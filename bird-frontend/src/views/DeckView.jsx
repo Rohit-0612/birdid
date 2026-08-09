@@ -182,7 +182,7 @@ function DeckHeader({ stats, showAll, onToggle }) {
         aria-pressed={showAll}
         className={`shrink-0 cursor-pointer rounded-lg border px-3.5 py-2 text-sm transition-colors duration-200 ${
           showAll
-            ? 'border-(--color-accent) bg-(--color-accent)/15 text-(--color-accent-bright)'
+            ? 'border-(--color-accent) bg-(--color-accent)/15 text-(--color-accent-hover)'
             : 'border-(--color-line) text-(--color-ink-soft) hover:border-(--color-accent)/50 hover:text-(--color-ink)'
         }`}
       >
@@ -202,6 +202,33 @@ function CardGrid({ cards, onSelect }) {
   )
 }
 
+/**
+ * Pointer-tracked 3D tilt plus a sheen origin, written straight to CSS variables.
+ *
+ * Deliberately not React state: a pointermove handler that calls setState fires
+ * dozens of times a second and would re-render the whole grid. Setting custom
+ * properties on the node keeps the work on the compositor.
+ */
+const MAX_TILT = 9 // degrees. More than about ten and it stops looking like a card.
+
+function onTilt(event) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  const el = event.currentTarget
+  const rect = el.getBoundingClientRect()
+  const px = (event.clientX - rect.left) / rect.width
+  const py = (event.clientY - rect.top) / rect.height
+  el.style.setProperty('--ry', `${(px - 0.5) * 2 * MAX_TILT}deg`)
+  el.style.setProperty('--rx', `${(0.5 - py) * 2 * MAX_TILT}deg`)
+  el.style.setProperty('--mx', `${px * 100}%`)
+  el.style.setProperty('--my', `${py * 100}%`)
+}
+
+function resetTilt(event) {
+  const el = event.currentTarget
+  el.style.setProperty('--rx', '0deg')
+  el.style.setProperty('--ry', '0deg')
+}
+
 function Card({ card, index, onSelect }) {
   if (card.locked) {
     return (
@@ -209,7 +236,7 @@ function Card({ card, index, onSelect }) {
         className="card flex flex-col overflow-hidden opacity-45"
         title={`${card.display_name} — not found yet`}
       >
-        <div className="grid aspect-square place-items-center bg-(--color-void)/40 text-(--color-ink-faint)">
+        <div className="grid aspect-square place-items-center bg-(--color-raised) text-(--color-ink-faint)">
           <Lock size={18} strokeWidth={1.5} />
         </div>
         <div className="px-2.5 py-2">
@@ -229,9 +256,15 @@ function Card({ card, index, onSelect }) {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.28, delay: Math.min(index * 0.02, 0.4) }}
       onClick={() => onSelect(card)}
-      className="card group flex cursor-pointer flex-col overflow-hidden text-left transition-colors duration-200 hover:border-(--color-accent)/50"
+      onPointerMove={onTilt}
+      onPointerLeave={resetTilt}
+      style={{ transformStyle: 'preserve-3d' }}
+      className="card group relative flex cursor-pointer flex-col overflow-hidden text-left
+                 transition-[transform,box-shadow,border-color] duration-200 ease-out
+                 [transform:perspective(700px)_rotateX(var(--rx,0deg))_rotateY(var(--ry,0deg))_translateZ(0)]
+                 hover:border-(--color-accent)/50 hover:shadow-[var(--shadow-lift)]"
     >
-      <div className="relative aspect-square overflow-hidden bg-(--color-void)/40">
+      <div className="relative aspect-square overflow-hidden bg-(--color-raised)">
         {card.thumb ? (
           <img
             src={api.cardThumbUrl(card.key)}
@@ -245,12 +278,12 @@ function Card({ card, index, onSelect }) {
           </span>
         )}
         {card.encounters > 1 && (
-          <span className="absolute top-1.5 right-1.5 rounded-full bg-(--color-void)/85 px-1.5 py-0.5 font-mono text-[0.62rem] text-(--color-ink-soft) backdrop-blur">
+          <span className="absolute top-1.5 right-1.5 rounded-full bg-black/55 px-1.5 py-0.5 font-mono text-[0.62rem] text-white backdrop-blur">
             ×{card.encounters}
           </span>
         )}
         {isNew && (
-          <span className="absolute bottom-1.5 left-1.5 rounded-full bg-(--color-accent)/85 px-1.5 py-0.5 text-[0.62rem] font-medium text-white backdrop-blur">
+          <span className="absolute bottom-1.5 left-1.5 rounded-full bg-(--color-accent) px-1.5 py-0.5 text-[0.62rem] font-medium text-(--color-on-accent) backdrop-blur">
             new
           </span>
         )}
@@ -265,6 +298,17 @@ function Card({ card, index, onSelect }) {
           </p>
         )}
       </div>
+
+      {/* Specular sheen. Positioned from the pointer via --mx/--my (set in onTilt),
+          so the highlight slides across the card as it tilts — which is what makes
+          a flat rectangle read as a physical object catching the light. Birds from
+          outside the 200 get the iridescent sweep, so the rare ones look rare. */}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 opacity-0 mix-blend-soft-light
+                    transition-opacity duration-300 group-hover:opacity-100
+                    ${isNew ? 'holo-rare' : 'holo'}`}
+      />
     </motion.button>
   )
 }
@@ -285,7 +329,7 @@ function CardDetail({ card, speech, onClose, onDelete, onOpenGuide }) {
   const isCub = card.source === 'cub'
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-(--color-void)/70 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-40 flex items-end justify-center bg-(--color-ink)/45 p-4 backdrop-blur-sm sm:items-center"
       onClick={onClose}
       role="presentation"
     >
@@ -370,7 +414,7 @@ function CardDetail({ card, speech, onClose, onDelete, onOpenGuide }) {
                   onClose()
                   onOpenGuide?.('guide', { folder: card.key })
                 }}
-                className="cursor-pointer rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-(--color-accent-bright)"
+                className="cursor-pointer rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-(--color-on-accent) transition-colors duration-200 hover:bg-(--color-accent-hover)"
               >
                 Open in field guide
               </button>

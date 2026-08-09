@@ -130,8 +130,8 @@ export function ListenView({ speech }) {
               onClick={toggleRecording}
               className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
                 recording
-                  ? 'bg-(--color-reject) text-white'
-                  : 'bg-(--color-accent) text-white hover:bg-(--color-accent-bright)'
+                  ? 'bg-(--color-reject) text-(--color-on-reject)'
+                  : 'bg-(--color-accent) text-(--color-on-accent) hover:bg-(--color-accent-hover)'
               }`}
             >
               {recording ? <Square size={14} strokeWidth={2.5} /> : <Mic size={15} strokeWidth={2} />}
@@ -272,11 +272,11 @@ function AudioResult({ result, onSpeak, speech }) {
         <ConfidenceGauge value={result.confidence} band={result.confidence_band} />
       </header>
 
-      <div className="border-y border-(--color-line) bg-(--color-void)/40 px-6 py-3">
+      <div className="border-y border-(--color-line) bg-(--color-raised) px-6 py-3">
         <button
           onClick={onSpeak}
           disabled={!speech.supported || speech.muted}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-(--color-accent-bright) disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-(--color-on-accent) transition-colors duration-200 hover:bg-(--color-accent-hover) disabled:cursor-not-allowed disabled:opacity-40"
         >
           <AudioLines size={15} strokeWidth={2} />
           Speak result
@@ -320,7 +320,7 @@ function AudioResult({ result, onSpeak, speech }) {
         )}
       </div>
 
-      <footer className="flex items-center gap-2 border-t border-(--color-line) bg-(--color-void)/50 px-6 py-3 text-[0.72rem] text-(--color-ink-faint)">
+      <footer className="flex items-center gap-2 border-t border-(--color-line) bg-(--color-raised) px-6 py-3 text-[0.72rem] text-(--color-ink-faint)">
         <Circle size={7} strokeWidth={3} className="text-(--color-accent)" />
         Identified by BirdNET (Cornell Lab of Ornithology)
         {result.settings.use_location

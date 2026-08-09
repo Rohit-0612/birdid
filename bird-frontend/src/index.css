@@ -1,59 +1,177 @@
 /* Fonts first: @import rules must precede all other rules, and the Tailwind
    import below expands into thousands of them. */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400&family=Raleway:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
 
 /* ═══════════════════════════════════════════════════════════
-   DESIGN TOKENS
+   DESIGN TOKENS — Organic Biophilic
 
-   The palette keeps the identity the Gradio app already had — deep plum base,
-   violet accent — so the two surfaces read as one project. What is new is a
-   semantic confidence scale, because confidence is the single most repeated
-   datum in this app and it should never be communicated by a number alone.
+   A field guide, not an admin panel. Mint paper, forest ink, sunlight through
+   the canopy for accents. Light is the default; dark is kept and shifted to a
+   forest night, because birding happens at dawn and dusk.
+
+   Every value here is contrast-checked against its background. Light mode is
+   far less forgiving than dark and several plausible choices fail outright:
+   #6b7d73 for tertiary text lands at 4.13:1, and lightening the green on hover
+   drops white button text to 3.67:1. Both were measured and rejected. Run the
+   ratio script in the plan's verification section before changing any of these.
 
    Three typefaces, each with a job:
-     Fraunces   species names. A field guide sets its subjects in a serif.
-     Inter      everything structural.
-     JetBrains  measurements, scores, percentages — anything you compare.
+     Lora        species names. A field guide sets its subjects in a serif.
+     Raleway     everything structural.
+     JetBrains   measurements, scores, percentages — anything you compare.
    ═══════════════════════════════════════════════════════════ */
 
 @theme {
-  /* Surfaces, darkest to lightest */
-  --color-void: #0b0910;
-  --color-base: #120f17;
-  --color-surface: #1a1522;
-  --color-raised: #221c2d;
-  --color-line: #2e2640;
+  /* ── Surfaces, lightest to deepest ── */
+  --color-base: #f4faf5; /* page ground — mint paper */
+  --color-surface: #ffffff; /* cards */
+  --color-raised: #eef6f0; /* insets, table stripes, inputs */
+  --color-void: #e6f1ea; /* deepest tint, used under overlays */
+  --color-line: #d8e9de; /* hairlines */
 
-  /* Violet accent */
-  --color-accent: #a855f7;
-  --color-accent-bright: #c084fc;
-  --color-accent-dim: #7c3aed;
+  /* ── Forest green ──
+     accent-hover is DARKER, not lighter: white text on a lighter green fails. */
+  --color-accent: #15803d;
+  --color-accent-hover: #116632;
+  /* Foreground for anything sitting ON the accent. It has to flip with the
+     theme: dark mode's accent is a bright green, and white text on it measures
+     1.74:1 — unreadable. Verified by the contrast script in both themes. */
+  --color-on-accent: #ffffff;
+  --color-accent-bright: #1c9950; /* glyphs and borders only, never behind white text */
+  --color-accent-dim: #7fc79b; /* secondary bar fills */
 
-  /* Text */
-  --color-ink: #ece9f1;
-  --color-ink-soft: #a29db0;
-  --color-ink-faint: #6b6577;
+  /* ── Canopy sunlight ──
+     sun is a graphic colour (3.01:1 — fine for shapes, fails as text);
+     sun-ink is its text-safe counterpart at 4.74:1. */
+  --color-sun: #d97706;
+  --color-sun-ink: #b45309;
 
-  /* Confidence — the one scale that carries meaning, not decoration */
+  /* ── Ink ── */
+  --color-ink: #0f172a; /* 16.87:1 */
+  --color-ink-soft: #3d4c44; /*  8.57:1 */
+  --color-ink-faint: #5d6f65; /*  5.05:1 */
+
+  /* ── Deep naturals, for silhouettes and photo mounts ── */
+  --color-canopy: #0b3b25; /* parallax foliage */
+  --color-mat: #0d1410; /* dark mount behind photos */
+
+  /* ── Confidence — the one scale that carries meaning, not decoration ── */
+  --color-high: #047857;
+  --color-moderate: #b45309;
+  --color-low: #be123c;
+  --color-reject: #be123c;
+  /* Same flipping-foreground problem as on-accent: dark mode's rose is light
+     enough that white text on it measures 3.67:1. */
+  --color-on-reject: #ffffff;
+
+  --font-display: 'Lora', Georgia, serif;
+  --font-sans: 'Raleway', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Organic shape language: generous, slightly irregular corners. */
+  --radius-card: 1.25rem;
+  --radius-organic: 1.75rem 1rem 1.75rem 1rem;
+
+  /* On light, depth comes from shadow rather than from borders. */
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -10px rgba(15, 23, 42, 0.1);
+  --shadow-lift: 0 2px 4px rgba(15, 23, 42, 0.05), 0 18px 40px -16px rgba(15, 23, 42, 0.18);
+}
+
+/* ── Dark: a forest at night ──────────────────────────────────
+   Redefining the same custom properties is enough — every Tailwind utility
+   resolves through var(), so the whole app follows. Declared three times so all
+   three states work: system-dark (no attribute), explicit dark, explicit light.
+
+   One caveat worth knowing: Tailwind compiles `/opacity` modifiers to a static
+   hex fallback plus a color-mix() declaration. The fallback is baked from the
+   light value, but color-mix wins in every browser that supports it, which is
+   all current ones. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-base: #0d1410;
+    --color-surface: #141d17;
+    --color-raised: #1b271f;
+    --color-void: #080d0a;
+    --color-line: #27352b;
+
+    --color-accent: #4ade80;
+    --color-on-accent: #06130c;
+    --color-accent-hover: #22c55e;
+    --color-accent-bright: #86efac;
+    --color-accent-dim: #2f6b47;
+
+    --color-sun: #fbbf24;
+    --color-sun-ink: #fcd34d;
+
+    --color-ink: #e8f0e9;
+    --color-ink-soft: #a8bcae;
+    /* Was #6b6577 at 3.39:1 — a real contrast failure, now 5.29:1. */
+    --color-ink-faint: #82998a;
+
+    /* Lighter than the ground, unlike in light mode: these are silhouettes drawn
+       at 7-10% opacity, and BirdFlock strokes its birds with this token. Darker
+       than the background made both invisible. Moonlit foliage, not shadow. */
+    --color-canopy: #7fb99a;
+    --color-mat: #050a07;
+
+    --color-high: #34d399;
+    --color-moderate: #fbbf24;
+    --color-low: #fb7185;
+    --color-reject: #f43f5e;
+    --color-on-reject: #2b0710;
+
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+    --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -16px rgba(0, 0, 0, 0.7);
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-base: #0d1410;
+  --color-surface: #141d17;
+  --color-raised: #1b271f;
+  --color-void: #080d0a;
+  --color-line: #27352b;
+
+  --color-accent: #4ade80;
+  --color-on-accent: #06130c;
+  --color-accent-hover: #22c55e;
+  --color-accent-bright: #86efac;
+  --color-accent-dim: #2f6b47;
+
+  --color-sun: #fbbf24;
+  --color-sun-ink: #fcd34d;
+
+  --color-ink: #e8f0e9;
+  --color-ink-soft: #a8bcae;
+  --color-ink-faint: #82998a;
+
+  --color-canopy: #7fb99a;
+  --color-mat: #050a07;
+
   --color-high: #34d399;
   --color-moderate: #fbbf24;
   --color-low: #fb7185;
   --color-reject: #f43f5e;
+  --color-on-reject: #2b0710;
 
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-
-  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -16px rgba(0, 0, 0, 0.7);
 }
 
-/* This app is dark by design — it is a night-and-dawn birding tool and the
-   Gradio surface it grew out of was dark. Rather than ship a washed-out light
-   mode nobody asked for, the colour scheme is declared so form controls,
-   scrollbars and focus rings all render dark natively. */
+/* Let form controls, scrollbars and the caret follow the theme natively. */
 :root {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
   color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+  }
 }
 
 html {
@@ -69,10 +187,9 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Keyboard users must always be able to see where they are. Every interactive
-   element inherits this unless it defines something better. */
+/* Keyboard users must always be able to see where they are. */
 :focus-visible {
-  outline: 2px solid var(--color-accent-bright);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -85,36 +202,85 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in oklab, var(--color-accent) 28%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 35%, transparent);
   border-radius: 99px;
   border: 3px solid var(--color-base);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklab, var(--color-accent) 45%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 55%, transparent);
 }
 
 /* ── Reusable primitives ─────────────────────────────────── */
 @utility card {
-  background: color-mix(in oklab, var(--color-surface) 70%, transparent);
+  background: var(--color-surface);
   border: 1px solid var(--color-line);
-  border-radius: 1rem;
-  backdrop-filter: blur(16px);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Glass, for panels that float over the animated background. */
+@utility card-glass {
+  background: color-mix(in oklab, var(--color-surface) 82%, transparent);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
 }
 
 @utility hairline {
   border-color: var(--color-line);
 }
 
+/* A dark mount behind photographs, spectrograms and heatmaps.
+   Print field guides mount plates on dark card for exactly this reason: it
+   stops a bright page from washing out the subject. It is also what keeps a
+   light UI viable for an app that is mostly photographs. */
+@utility mat {
+  background: var(--color-mat);
+  border-radius: calc(var(--radius-card) - 0.35rem);
+  overflow: hidden;
+}
+
 /* The sentence currently being spoken by the narrator. Deliberately subtle:
    it tracks along while you read, it does not shout. */
 @utility speaking {
-  background: color-mix(in oklab, var(--color-accent) 18%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 10%, transparent);
+  background: color-mix(in oklab, var(--color-sun) 30%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-sun) 14%, transparent);
   border-radius: 3px;
 }
 
-/* Respect the OS setting. Everything below is decoration; none of it carries
-   information that is lost when it stops moving. */
+/* Holographic sheen for deck cards. The gradient is positioned from pointer
+   coordinates set as --mx/--my in the component, so the highlight tracks the
+   cursor and reads as a specular reflection off a real card. */
+@utility holo {
+  background-image: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in oklab, var(--color-sun) 55%, transparent),
+    transparent 60%
+  );
+}
+
+@utility holo-rare {
+  background-image:
+    radial-gradient(
+      circle at var(--mx, 50%) var(--my, 50%),
+      color-mix(in oklab, #ffffff 65%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(
+      115deg,
+      transparent 20%,
+      color-mix(in oklab, var(--color-sun) 45%, transparent) 38%,
+      color-mix(in oklab, #22d3ee 40%, transparent) 50%,
+      color-mix(in oklab, #a855f7 40%, transparent) 62%,
+      transparent 80%
+    );
+}
+
+/* Respect the OS setting. Everything animated in this app is decoration; no
+   information is lost when it stops moving. The canvas and WebGL layers check
+   this in JS as well and render a single static frame instead of a loop. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

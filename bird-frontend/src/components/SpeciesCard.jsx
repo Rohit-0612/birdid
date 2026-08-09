@@ -29,11 +29,11 @@ function VerificationPanel({ verification }) {
 
   if (!verification.ran) {
     return (
-      <div className="border-b border-(--color-line) bg-(--color-void)/40 px-6 py-3 text-xs text-(--color-ink-faint)">
+      <div className="border-b border-(--color-line) bg-(--color-raised) px-6 py-3 text-xs text-(--color-ink-faint)">
         A second opinion was wanted here ({verification.reason}) but the
         open-vocabulary verifier is unavailable
         {verification.error ? `: ${verification.error}` : ''}. Install it with{' '}
-        <code className="rounded bg-(--color-void)/60 px-1 py-0.5 font-mono">
+        <code className="rounded bg-(--color-raised) px-1 py-0.5 font-mono">
           pip3 install -r requirements-verify.txt
         </code>
         .
@@ -112,7 +112,7 @@ function DeckOutcome({ deck, onForceAdd, forcing }) {
 
   if (!deck.entry) {
     return (
-      <div className="flex flex-wrap items-center gap-3 border-b border-(--color-line) bg-(--color-void)/40 px-6 py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-(--color-line) bg-(--color-raised) px-6 py-3">
         <p className="min-w-0 flex-1 text-xs text-(--color-ink-faint)">
           <strong className="text-(--color-ink-soft)">Not added to your deck</strong> —{' '}
           {deck.reason}. A wrong card is worse than a missing one, so nothing was
@@ -130,13 +130,38 @@ function DeckOutcome({ deck, onForceAdd, forcing }) {
   }
 
   const entry = deck.entry
+  const isNewSpecies = deck.created
+
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-(--color-line) bg-(--color-high)/10 px-6 py-3">
-      <Check size={15} strokeWidth={2.5} className="shrink-0 text-(--color-high)" />
+    <motion.div
+      // A first capture is the payoff of the whole deck, so it gets a moment: the
+      // banner scales in and an amber ring pulses once outward. A repeat encounter
+      // just appears — celebrating it every time would cheapen the first.
+      initial={isNewSpecies ? { opacity: 0, scale: 0.97 } : false}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+      className={`relative flex flex-wrap items-center gap-2 overflow-hidden border-b border-(--color-line) px-6 py-3 ${
+        isNewSpecies ? 'bg-(--color-sun)/12' : 'bg-(--color-high)/10'
+      }`}
+    >
+      {isNewSpecies && (
+        <motion.span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-[inherit] ring-2 ring-(--color-sun)"
+          initial={{ opacity: 0.9, scale: 0.98 }}
+          animate={{ opacity: 0, scale: 1.02 }}
+          transition={{ duration: 1.1, ease: 'easeOut' }}
+        />
+      )}
+      <Check
+        size={15}
+        strokeWidth={2.5}
+        className={`shrink-0 ${isNewSpecies ? 'text-(--color-sun-ink)' : 'text-(--color-high)'}`}
+      />
       <p className="min-w-0 flex-1 text-sm text-(--color-ink-soft)">
-        {deck.created ? (
+        {isNewSpecies ? (
           <>
-            <strong className="text-(--color-high)">New species!</strong> {entry.display_name}{' '}
+            <strong className="text-(--color-sun-ink)">New species!</strong> {entry.display_name}{' '}
             added to your deck
             {entry.source === 'external' && ' — beyond the trained 200'}.
           </>
@@ -147,7 +172,7 @@ function DeckOutcome({ deck, onForceAdd, forcing }) {
           </>
         )}
       </p>
-    </div>
+    </motion.div>
   )
 }
 
@@ -240,11 +265,11 @@ export function SpeciesCard({ result, speech, onAsk, onPickSpecies, onForceAdd, 
       </header>
 
       {/* ── Actions ── */}
-      <div className="flex flex-wrap gap-2 border-y border-(--color-line) bg-(--color-void)/40 px-6 py-3">
+      <div className="flex flex-wrap gap-2 border-y border-(--color-line) bg-(--color-raised) px-6 py-3">
         <button
           onClick={speakNarration}
           disabled={!speech.supported || speech.muted || narrating}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-(--color-accent-bright) disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-3.5 py-2 text-sm font-medium text-(--color-on-accent) transition-all duration-200 hover:bg-(--color-accent-hover) disabled:cursor-not-allowed disabled:opacity-40"
           title={
             !speech.supported ? 'This browser has no speech synthesis'
               : speech.muted ? 'Voice is muted — unmute in the header'
@@ -286,7 +311,7 @@ export function SpeciesCard({ result, speech, onAsk, onPickSpecies, onForceAdd, 
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.05 * i, duration: 0.3 }}
-                  className="flex gap-2.5 rounded-lg border border-(--color-line) bg-(--color-void)/30 p-3 text-sm leading-relaxed text-(--color-ink-soft)"
+                  className="flex gap-2.5 rounded-lg border border-(--color-line) bg-(--color-raised) p-3 text-sm leading-relaxed text-(--color-ink-soft)"
                 >
                   <Eye size={15} strokeWidth={2} className="mt-0.5 shrink-0 text-(--color-accent)" />
                   {mark}
@@ -333,7 +358,7 @@ export function SpeciesCard({ result, speech, onAsk, onPickSpecies, onForceAdd, 
               {info.similar_species.map((similar) => (
                 <div
                   key={similar.name}
-                  className="rounded-xl border border-(--color-line) bg-(--color-void)/30 p-3.5"
+                  className="rounded-xl border border-(--color-line) bg-(--color-raised) p-3.5"
                 >
                   <div className="mb-1.5 flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium text-(--color-ink)">{similar.name}</p>
@@ -433,7 +458,7 @@ function RejectionBanner({ gate }) {
 
 function Provenance({ provenance = {}, usedLlm, gate }) {
   return (
-    <footer className="space-y-1.5 border-t border-(--color-line) bg-(--color-void)/50 px-6 py-4 text-[0.72rem] leading-relaxed text-(--color-ink-faint)">
+    <footer className="space-y-1.5 border-t border-(--color-line) bg-(--color-raised) px-6 py-4 text-[0.72rem] leading-relaxed text-(--color-ink-faint)">
       {provenance.caveat && (
         <p className="flex gap-2">
           <AlertTriangle size={13} strokeWidth={2} className="mt-0.5 shrink-0 text-(--color-moderate)" />

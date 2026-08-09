@@ -40,7 +40,7 @@ export function ExplainView({ health }) {
               </p>
               <p className="mt-3 text-sm leading-relaxed text-(--color-ink-faint)">
                 The fix already exists in the repository:{' '}
-                <code className="rounded bg-(--color-void)/60 px-1.5 py-0.5 font-mono text-xs">train.py</code>{' '}
+                <code className="rounded bg-(--color-raised) px-1.5 py-0.5 font-mono text-xs">train.py</code>{' '}
                 trains against the committed split manifests and records their SHA-256 in the
                 checkpoint. Any checkpoint carrying that hash is picked up automatically and this
                 banner disappears.
@@ -114,7 +114,7 @@ export function ExplainView({ health }) {
             <p className="text-sm leading-relaxed text-(--color-ink-soft)">
               No threshold has been fitted yet, so every photo is treated as one of the{' '}
               {health.num_species} known species — including photos of dogs. Run{' '}
-              <code className="rounded bg-(--color-void)/60 px-1.5 py-0.5 font-mono text-xs">
+              <code className="rounded bg-(--color-raised) px-1.5 py-0.5 font-mono text-xs">
                 python3 scripts/fit_openset.py
               </code>{' '}
               to enable it.
@@ -250,7 +250,7 @@ function VerifierPanel({ verifier, numSpecies }) {
       <p className="text-sm leading-relaxed text-(--color-ink-soft)">
         Not installed, so a photo that is not one of the {numSpecies} known species can
         only be rejected, never named. Install it with{' '}
-        <code className="rounded bg-(--color-void)/60 px-1.5 py-0.5 font-mono text-xs">
+        <code className="rounded bg-(--color-raised) px-1.5 py-0.5 font-mono text-xs">
           pip3 install -r requirements-verify.txt
         </code>{' '}
         — {verifier?.reason ?? 'reason unknown'}.
@@ -328,7 +328,7 @@ function VerifierPanel({ verifier, numSpecies }) {
           <p className="text-sm leading-relaxed text-(--color-ink-soft)">
             No threshold fitted yet, so the verifier ranks candidates but never asserts
             confidence. Run{' '}
-            <code className="rounded bg-(--color-void)/60 px-1.5 py-0.5 font-mono text-xs">
+            <code className="rounded bg-(--color-raised) px-1.5 py-0.5 font-mono text-xs">
               python3 scripts/eval_verifier.py
             </code>
             .

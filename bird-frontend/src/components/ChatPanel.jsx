@@ -142,7 +142,7 @@ export function ChatPanel({ folder, speech, pendingQuestion, onConsumePending, o
               className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                 turn.role === 'user'
                   ? 'bg-(--color-accent)/20 text-(--color-ink)'
-                  : 'border border-(--color-line) bg-(--color-void)/40 text-(--color-ink-soft)'
+                  : 'border border-(--color-line) bg-(--color-raised) text-(--color-ink-soft)'
               }`}
             >
               {turn.content || (
@@ -159,7 +159,7 @@ export function ChatPanel({ folder, speech, pendingQuestion, onConsumePending, o
               {turn.role === 'assistant' && turn.content && !streaming && speech?.supported && (
                 <button
                   onClick={() => speech.speak(turn.content)}
-                  className="mt-2 flex cursor-pointer items-center gap-1.5 text-xs text-(--color-ink-faint) transition-colors duration-200 hover:text-(--color-accent-bright)"
+                  className="mt-2 flex cursor-pointer items-center gap-1.5 text-xs text-(--color-ink-faint) transition-colors duration-200 hover:text-(--color-accent-hover)"
                 >
                   <Volume2 size={12} strokeWidth={2} />
                   Read aloud
@@ -181,13 +181,13 @@ export function ChatPanel({ folder, speech, pendingQuestion, onConsumePending, o
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Ask about this bird…"
-          className="min-w-0 flex-1 rounded-lg border border-(--color-line) bg-(--color-void)/60 px-3 py-2 text-sm text-(--color-ink) placeholder:text-(--color-ink-faint) focus:border-(--color-accent)/50 focus:outline-none"
+          className="min-w-0 flex-1 rounded-lg border border-(--color-line) bg-(--color-raised) px-3 py-2 text-sm text-(--color-ink) placeholder:text-(--color-ink-faint) focus:border-(--color-accent)/50 focus:outline-none"
         />
         <button
           type="submit"
           disabled={!draft.trim() || streaming}
           aria-label="Send question"
-          className="inline-flex cursor-pointer items-center rounded-lg bg-(--color-accent) px-3 py-2 text-white transition-colors duration-200 hover:bg-(--color-accent-bright) disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex cursor-pointer items-center rounded-lg bg-(--color-accent) px-3 py-2 text-(--color-on-accent) transition-colors duration-200 hover:bg-(--color-accent-hover) disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send size={15} strokeWidth={2} />
         </button>

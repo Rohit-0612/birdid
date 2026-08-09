@@ -49,19 +49,30 @@ export function Dropzone({ onFile, preview, onClear, busy, gradcamUrl, showGradc
           setDragging(false)
           accept(e.dataTransfer.files?.[0])
         }}
-        className={`card relative overflow-hidden transition-colors duration-200 ${
-          dragging ? 'border-(--color-accent) bg-(--color-accent)/10' : ''
+        className={`card relative overflow-hidden transition-all duration-200 ${
+          dragging
+            ? 'scale-[1.006] border-dashed border-(--color-accent) bg-(--color-accent)/10 shadow-[var(--shadow-lift)]'
+            : ''
         }`}
       >
         {preview ? (
-          <div className="relative">
+          // A photograph is mounted on a dark mat — print field guides do this so a
+          // bright page cannot wash out the plate, and it is what keeps a light
+          // interface viable for an app that is mostly photographs. Grad-CAM is the
+          // exception: it is a matplotlib figure on white, so a dark mount would
+          // frame it as a white sheet on black. It gets a light mount instead.
+          <div
+            className={`relative m-2 overflow-hidden rounded-[calc(var(--radius-card)-0.35rem)] ${
+              showGradcam && gradcamUrl ? 'bg-(--color-raised)' : 'bg-(--color-mat)'
+            }`}
+          >
             <img
               src={showGradcam && gradcamUrl ? gradcamUrl : preview}
               alt={showGradcam ? 'Grad-CAM attention overlay' : 'Uploaded bird photo'}
               className="max-h-[380px] w-full object-contain"
             />
             {busy && (
-              <div className="absolute inset-0 grid place-items-center bg-(--color-void)/70 backdrop-blur-sm">
+              <div className="absolute inset-0 grid place-items-center bg-(--color-surface)/65 backdrop-blur-sm">
                 <span className="size-8 animate-spin rounded-full border-2 border-(--color-line) border-t-(--color-accent)" />
               </div>
             )}
@@ -71,8 +82,8 @@ export function Dropzone({ onFile, preview, onClear, busy, gradcamUrl, showGradc
                   onClick={onToggleGradcam}
                   className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs backdrop-blur transition-colors duration-200 ${
                     showGradcam
-                      ? 'border-(--color-accent) bg-(--color-accent)/25 text-(--color-accent-bright)'
-                      : 'border-(--color-line) bg-(--color-void)/80 text-(--color-ink-soft) hover:text-(--color-ink)'
+                      ? 'border-(--color-accent) bg-(--color-accent)/25 text-(--color-accent-hover)'
+                      : 'border-(--color-line) bg-(--color-surface)/85 text-(--color-ink-soft) hover:text-(--color-ink)'
                   }`}
                   title="Show which pixels drove the prediction"
                 >
@@ -82,7 +93,7 @@ export function Dropzone({ onFile, preview, onClear, busy, gradcamUrl, showGradc
               )}
               <button
                 onClick={onClear}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-(--color-line) bg-(--color-void)/80 px-2.5 py-1.5 text-xs text-(--color-ink-soft) backdrop-blur transition-colors duration-200 hover:text-(--color-ink)"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-(--color-line) bg-(--color-surface)/85 px-2.5 py-1.5 text-xs text-(--color-ink-soft) backdrop-blur transition-colors duration-200 hover:text-(--color-ink)"
               >
                 <RotateCcw size={13} strokeWidth={2} />
                 New photo
@@ -92,9 +103,9 @@ export function Dropzone({ onFile, preview, onClear, busy, gradcamUrl, showGradc
         ) : (
           <button
             onClick={() => inputRef.current?.click()}
-            className="flex w-full cursor-pointer flex-col items-center gap-3 px-6 py-14 text-center transition-colors duration-200 hover:bg-(--color-accent)/5"
+            className="group flex w-full cursor-pointer flex-col items-center gap-3 px-6 py-14 text-center transition-colors duration-200 hover:bg-(--color-accent)/5"
           >
-            <span className="grid size-14 place-items-center rounded-full border border-(--color-line) text-(--color-accent)">
+            <span className="grid size-14 place-items-center rounded-full border border-(--color-line) text-(--color-accent) transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-(--color-accent)/50 group-hover:bg-(--color-accent)/8">
               <ImagePlus size={22} strokeWidth={1.5} />
             </span>
             <span className="font-display text-lg text-(--color-ink)">Drop a bird photo</span>
