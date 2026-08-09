@@ -46,6 +46,8 @@ __pycache__/
 .venv/
 venv/
 .ipynb_checkpoints/
+.pytest_cache/
+tests/_artifacts/
 
 # ── Node ─────────────────────────────────────────────────────
 node_modules/
