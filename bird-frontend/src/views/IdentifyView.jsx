@@ -20,7 +20,7 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
-  const [saved, setSaved] = useState(false)
+  const [forcing, setForcing] = useState(false)
 
   const [gradcamUrl, setGradcamUrl] = useState(null)
   const [showGradcam, setShowGradcam] = useState(false)
@@ -28,15 +28,17 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
   const [chatOpen, setChatOpen] = useState(false)
   const [pendingQuestion, setPendingQuestion] = useState(null)
 
+  // One call identifies, consults the verifier when warranted, and files the bird
+  // in the deck. Registration is automatic by design — the whole point of the deck
+  // is that every bird you photograph ends up in it without a button press.
   const identify = useCallback(async (chosen) => {
     setBusy(true)
     setError(null)
     setResult(null)
-    setSaved(false)
     setGradcamUrl(null)
     setShowGradcam(false)
     try {
-      setResult(await api.identify(chosen))
+      setResult(await api.identify(chosen, { register: true }))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -61,18 +63,21 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
     setError(null)
     setGradcamUrl(null)
     setShowGradcam(false)
-    setSaved(false)
   }
 
-  const save = useCallback(async () => {
-    if (!result || saved) return
+  /** "Add anyway" — file a card the automatic routing declined to guess at. */
+  const forceAdd = useCallback(async () => {
+    if (!result) return
+    setForcing(true)
     try {
-      await api.saveSighting(result, { file })
-      setSaved(true)
+      const outcome = await api.registerCard(result, file)
+      setResult((prev) => ({ ...prev, deck: outcome }))
     } catch (err) {
-      setError(`Could not save: ${err.message}`)
+      setError(`Could not add to the deck: ${err.message}`)
+    } finally {
+      setForcing(false)
     }
-  }, [result, saved, file])
+  }, [result, file])
 
   const toggleGradcam = useCallback(async () => {
     if (gradcamUrl) {
@@ -102,7 +107,13 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
         if (file) identify(file)
         else speech.speak('Drop in a photo first and I will identify it.')
       } else if (intent === 'save') {
-        save()
+        // Birds register themselves now, so a spoken "save this" only has work to
+        // do when the automatic routing declined to guess.
+        if (result?.deck?.entry) {
+          speech.speak(`${result.species.display_name} is already in your deck.`)
+        } else if (result) {
+          forceAdd()
+        }
       } else if (intent === 'fieldMarks') {
         const marks = result?.info?.field_marks
         speech.speak(
@@ -124,7 +135,7 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
         setPendingQuestion(transcript)
       }
     },
-    [file, identify, save, result, speech],
+    [file, identify, forceAdd, result, speech],
   )
 
   useEffect(() => registerVoiceHandler?.(handleVoice), [registerVoiceHandler, handleVoice])
@@ -156,8 +167,8 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
             key={`${result.species.folder}-${result.timing_ms?.total}`}
             result={result}
             speech={speech}
-            onSave={save}
-            saved={saved}
+            onForceAdd={forceAdd}
+            forcing={forcing}
             onAsk={() => setChatOpen(true)}
             onPickSpecies={(folder) => onGoto?.('guide', { folder })}
           />
@@ -166,9 +177,10 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
         {!result && !busy && !error && (
           <div className="card">
             <EmptyState icon={Bird} title="No bird yet">
-              Drop in a photo and you will get the species, how confident the model is, how to
-              confirm it in the field, and what it is easily confused with. Hold the space bar to
-              talk to it.
+              Drop in a photo and you will get the species, how confident the model is, and how
+              to confirm it in the field — and the bird files itself into your deck. Birds outside
+              the trained 200 get a second opinion from an open-vocabulary model. Hold the space
+              bar to talk to it.
             </EmptyState>
           </div>
         )}

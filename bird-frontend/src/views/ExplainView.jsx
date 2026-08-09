@@ -194,6 +194,18 @@ export function ExplainView({ health }) {
           </p>
         </section>
 
+        {/* ── The second identifier ── */}
+        <section className="card p-6 lg:col-span-2">
+          <SectionTitle
+            right={
+              health.verifier?.ok ? <Chip tone="high">available</Chip> : <Chip tone="moderate">not installed</Chip>
+            }
+          >
+            The second identifier — birds outside the 200
+          </SectionTitle>
+          <VerifierPanel verifier={health.verifier} numSpecies={health.num_species} />
+        </section>
+
         <section className="card p-6">
           <SectionTitle>Language model</SectionTitle>
           <dl className="space-y-2.5 text-sm">
@@ -223,6 +235,106 @@ export function ExplainView({ health }) {
           <ShieldQuestion size={13} strokeWidth={2} /> No API keys, no telemetry, no network calls
         </span>
       </section>
+    </div>
+  )
+}
+
+/**
+ * The verifier's measured behaviour, including the two numbers that are easy to
+ * hide: how often it is wrong when it does name something, and how often the true
+ * species is not in its vocabulary at all.
+ */
+function VerifierPanel({ verifier, numSpecies }) {
+  if (!verifier?.ok) {
+    return (
+      <p className="text-sm leading-relaxed text-(--color-ink-soft)">
+        Not installed, so a photo that is not one of the {numSpecies} known species can
+        only be rejected, never named. Install it with{' '}
+        <code className="rounded bg-(--color-void)/60 px-1.5 py-0.5 font-mono text-xs">
+          pip3 install -r requirements-verify.txt
+        </code>{' '}
+        — {verifier?.reason ?? 'reason unknown'}.
+      </p>
+    )
+  }
+
+  const measured = verifier.threshold?.measured?.near_bird
+  return (
+    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div>
+        <p className="text-sm leading-relaxed text-(--color-ink-soft)">
+          BioCLIP scores a photo against species <em>names</em> rather than a fixed set
+          of classes, so its vocabulary is a data file. Candidates come from BirdNET's
+          label list — {verifier.species?.toLocaleString()} birds, {' '}
+          {Math.round((verifier.species ?? 0) / (numSpecies || 1))}× the trained model's
+          reach. It runs locally and is consulted when the open-set gate rejects a photo
+          or confidence falls below{' '}
+          {Math.round((verifier.triggers_below_confidence ?? 0.6) * 100)}%.
+        </p>
+        <dl className="mt-4 space-y-2.5 text-sm">
+          <Row label="Model" value="BioCLIP (Tree-of-Life CLIP)" />
+          <Row label="Candidate species" value={verifier.species?.toLocaleString()} mono />
+          <Row label="Weights loaded" value={verifier.loaded ? 'yes' : 'on first use'} />
+          <Row
+            label="Accepts a name above"
+            value={verifier.threshold ? verifier.threshold.min_score.toFixed(3) : 'unfitted'}
+            mono
+          />
+        </dl>
+      </div>
+
+      <div>
+        {measured ? (
+          <>
+            <p className="mb-3 text-xs text-(--color-ink-faint)">
+              Measured on {measured.n} photos of {measured.species} bird species
+              deliberately outside the trained {numSpecies}.
+            </p>
+            <div className="space-y-3">
+              <Bar
+                label="Right when it names a bird"
+                value={measured.precision_at_threshold ?? 0}
+                color="var(--color-high)"
+                highlight
+                index={0}
+              />
+              <Bar
+                label="Names a bird at all"
+                value={measured.coverage_at_threshold ?? 0}
+                color="var(--color-accent)"
+                index={1}
+              />
+              <Bar
+                label="Top-1 when the species was in vocabulary"
+                value={measured.top1_when_possible ?? 0}
+                color="var(--color-accent-dim)"
+                index={2}
+              />
+              <Bar
+                label="True species missing from vocabulary"
+                value={measured.not_in_vocabulary ?? 0}
+                color="var(--color-moderate)"
+                index={3}
+              />
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-(--color-ink-faint)">
+              That last bar is the honest limit: BirdNET lists only species it can{' '}
+              <em>hear</em>, so non-vocal and captive-exotic birds — Common Ostrich,
+              Emperor Penguin — are absent from the candidate list entirely and could
+              never be named, however good the model is.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm leading-relaxed text-(--color-ink-soft)">
+            No threshold fitted yet, so the verifier ranks candidates but never asserts
+            confidence. Run{' '}
+            <code className="rounded bg-(--color-void)/60 px-1.5 py-0.5 font-mono text-xs">
+              python3 scripts/eval_verifier.py
+            </code>
+            .
+          </p>
+        )}
+      </div>
     </div>
   )
 }

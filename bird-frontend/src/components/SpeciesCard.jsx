@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
 import {
-  AlertTriangle, Bookmark, Check, Eye, Info, Leaf, MessageCircleQuestion,
+  AlertTriangle, Check, Eye, Info, Leaf, MessageCircleQuestion,
   Ruler, Sparkles, Square, Utensils, Volume2, Wind,
 } from 'lucide-react'
 
@@ -19,19 +19,152 @@ const IUCN_TONE = {
 }
 
 /**
+ * Both models' answers, side by side, when the verifier was consulted.
+ *
+ * Shown whenever verification ran, including when the two agree — agreement is the
+ * most reassuring thing the app can tell you, and hiding it would waste the signal.
+ */
+function VerificationPanel({ verification }) {
+  if (!verification) return null
+
+  if (!verification.ran) {
+    return (
+      <div className="border-b border-(--color-line) bg-(--color-void)/40 px-6 py-3 text-xs text-(--color-ink-faint)">
+        A second opinion was wanted here ({verification.reason}) but the
+        open-vocabulary verifier is unavailable
+        {verification.error ? `: ${verification.error}` : ''}. Install it with{' '}
+        <code className="rounded bg-(--color-void)/60 px-1 py-0.5 font-mono">
+          pip3 install -r requirements-verify.txt
+        </code>
+        .
+      </div>
+    )
+  }
+
+  const best = verification.best
+  const agrees = verification.agrees_with_classifier
+
+  return (
+    <div className="border-b border-(--color-line) bg-(--color-accent)/5 px-6 py-4">
+      <SectionTitle
+        right={
+          <span className="text-[0.68rem] text-(--color-ink-faint)">
+            {verification.species_considered?.toLocaleString()} species considered
+          </span>
+        }
+      >
+        Second opinion
+      </SectionTitle>
+
+      <p className="mb-3 text-xs text-(--color-ink-faint)">
+        Consulted because {verification.reason}. This model is not limited to the 200.
+      </p>
+
+      <div className="space-y-2">
+        {verification.top.slice(0, 3).map((candidate, i) => (
+          <div
+            key={candidate.scientific_name}
+            className={`flex items-baseline justify-between gap-3 rounded-lg border px-3 py-2 ${
+              i === 0
+                ? 'border-(--color-accent)/40 bg-(--color-accent)/10'
+                : 'border-(--color-line)'
+            }`}
+          >
+            <div className="min-w-0">
+              <p className={`truncate text-sm ${i === 0 ? 'text-(--color-ink)' : 'text-(--color-ink-soft)'}`}>
+                {candidate.common_name}
+              </p>
+              <p className="truncate text-[0.68rem] italic text-(--color-ink-faint)">
+                {candidate.scientific_name}
+              </p>
+            </div>
+            <span className="shrink-0 font-mono text-xs tabular-nums text-(--color-ink-faint)">
+              {candidate.similarity.toFixed(3)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {verification.confident === false && (
+          <Chip tone="low">not confident enough to name it</Chip>
+        )}
+        {verification.confident && !verification.in_cub_200 && (
+          <Chip tone="accent">
+            <Sparkles size={11} strokeWidth={2} />
+            outside the trained 200
+          </Chip>
+        )}
+        {agrees === true && <Chip tone="high">agrees with the classifier</Chip>}
+        {agrees === false && (
+          <Chip tone="moderate">
+            disagrees — it says {best.common_name}
+          </Chip>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** What happened to this identification in the deck. */
+function DeckOutcome({ deck, onForceAdd, forcing }) {
+  if (!deck) return null
+
+  if (!deck.entry) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 border-b border-(--color-line) bg-(--color-void)/40 px-6 py-3">
+        <p className="min-w-0 flex-1 text-xs text-(--color-ink-faint)">
+          <strong className="text-(--color-ink-soft)">Not added to your deck</strong> —{' '}
+          {deck.reason}. A wrong card is worse than a missing one, so nothing was
+          filed.
+        </p>
+        <button
+          onClick={onForceAdd}
+          disabled={forcing}
+          className="shrink-0 cursor-pointer rounded-lg border border-(--color-line) px-3 py-1.5 text-xs text-(--color-ink-soft) transition-colors duration-200 hover:border-(--color-accent)/50 hover:text-(--color-ink) disabled:opacity-50"
+        >
+          {forcing ? 'Adding…' : 'Add anyway'}
+        </button>
+      </div>
+    )
+  }
+
+  const entry = deck.entry
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-(--color-line) bg-(--color-high)/10 px-6 py-3">
+      <Check size={15} strokeWidth={2.5} className="shrink-0 text-(--color-high)" />
+      <p className="min-w-0 flex-1 text-sm text-(--color-ink-soft)">
+        {deck.created ? (
+          <>
+            <strong className="text-(--color-high)">New species!</strong> {entry.display_name}{' '}
+            added to your deck
+            {entry.source === 'external' && ' — beyond the trained 200'}.
+          </>
+        ) : (
+          <>
+            Already in your deck — <strong className="text-(--color-ink)">{entry.display_name}</strong>{' '}
+            seen {entry.encounters} times now.
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
+
+/**
  * Everything known about one identification.
  *
- * Ordered by what a birder actually needs: is it right (gauge + band), what is
- * it (name + taxonomy), how do I confirm it (field marks), what else could it be
- * (look-alikes), then the extras. The provenance footer is last but never
- * omitted — the checkpoint is unaudited and the prose is machine-written, and
- * the card says so.
+ * Ordered by what a birder actually needs: is it right (gauge + band), what is it
+ * (name + taxonomy), what the deck did with it, what the second model thought, how
+ * to confirm it (field marks), what else it could be (look-alikes), then the extras.
+ * The provenance footer is last but never omitted — the checkpoint is unaudited and
+ * the prose is machine-written, and the card says so.
  *
- * Callers pass a `key` that changes per identification, so a new result remounts
- * the card and the narration state resets on its own. That is cheaper and less
+ * Callers pass a `key` that changes per identification, so a new result remounts the
+ * card and the narration state resets on its own. That is cheaper and less
  * error-prone than an effect that clears state when a prop changes.
  */
-export function SpeciesCard({ result, speech, onSave, saved, onAsk, onPickSpecies }) {
+export function SpeciesCard({ result, speech, onAsk, onPickSpecies, onForceAdd, forcing }) {
   const [narration, setNarration] = useState(null)
   const [narrating, setNarrating] = useState(false)
 
@@ -130,15 +263,12 @@ export function SpeciesCard({ result, speech, onSave, saved, onAsk, onPickSpecie
           Ask about it
         </button>
 
-        <button
-          onClick={onSave}
-          disabled={saved}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-(--color-line) px-3.5 py-2 text-sm text-(--color-ink-soft) transition-colors duration-200 hover:border-(--color-accent)/50 hover:text-(--color-ink) disabled:cursor-default disabled:opacity-60"
-        >
-          {saved ? <Check size={15} strokeWidth={2.5} className="text-(--color-high)" /> : <Bookmark size={15} strokeWidth={2} />}
-          {saved ? 'In your life list' : 'Save to life list'}
-        </button>
       </div>
+
+      {/* Registration is automatic, so the card reports what happened rather than
+          offering a button. */}
+      <DeckOutcome deck={result.deck} onForceAdd={onForceAdd} forcing={forcing} />
+      <VerificationPanel verification={result.verification} />
 
       {narration && (
         <NarrationPanel narration={narration} speech={speech} />

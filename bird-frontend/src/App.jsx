@@ -9,7 +9,7 @@ import { Chip } from './components/primitives'
 import { IdentifyView } from './views/IdentifyView'
 import { ListenView } from './views/ListenView'
 import { GuideView } from './views/GuideView'
-import { LifeListView } from './views/LifeListView'
+import { DeckView, RecentEncounters } from './views/DeckView'
 import { ExplainView } from './views/ExplainView'
 import { useSpeech } from './hooks/useSpeech'
 import { useVoiceCommands } from './hooks/useVoiceCommands'
@@ -19,7 +19,7 @@ const VIEWS = [
   { id: 'identify', label: 'Identify', icon: ScanSearch },
   { id: 'listen', label: 'Listen', icon: AudioLines },
   { id: 'guide', label: 'Field guide', icon: Bird },
-  { id: 'life', label: 'Life list', icon: BookMarked },
+  { id: 'deck', label: 'Deck', icon: BookMarked },
   { id: 'explain', label: 'How it works', icon: ShieldQuestion },
 ]
 
@@ -60,7 +60,7 @@ export default function App() {
         return
       }
       if (intent === 'listen') return setView('listen')
-      if (intent === 'lifeList') return setView('life')
+      if (intent === 'lifeList') return setView('deck')
       if (intent === 'fieldGuide') return setView('guide')
       if (intent === 'compare' && target) {
         setToast(`Search the field guide for “${target}” and use the ⇆ buttons to compare.`)
@@ -126,7 +126,12 @@ export default function App() {
           )}
           {view === 'listen' && <ListenView speech={speech} />}
           {view === 'guide' && <GuideView focusFolder={guideFocus} speech={speech} />}
-          {view === 'life' && <LifeListView />}
+          {view === 'deck' && (
+            <div className="space-y-6">
+              <DeckView speech={speech} onGoto={goto} />
+              <RecentEncounters />
+            </div>
+          )}
           {view === 'explain' && <ExplainView health={health} />}
         </main>
 
@@ -176,7 +181,7 @@ function Header({ health, speech, voice }) {
           Bird<span className="text-(--color-accent)">ID</span>
         </h1>
         <p className="mt-2 text-sm text-(--color-ink-faint)">
-          Identify birds by photo or call, ask about them, keep a life list
+          Identify birds by photo or call, ask about them, collect them
         </p>
       </div>
 

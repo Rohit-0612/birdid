@@ -24,9 +24,18 @@ async function json(res) {
 
 export const health = () => fetch('/api/health').then(json)
 
-export function identify(file) {
+/**
+ * Identify a photo, and by default file it straight into the deck.
+ *
+ * One request does identification, open-vocabulary verification (when the
+ * confidence or the open-set gate warrants it) and deck registration, because the
+ * server already has the image — splitting it up would mean uploading twice.
+ */
+export function identify(file, { register = true, verify = true } = {}) {
   const body = new FormData()
   body.append('image', file)
+  body.append('register', String(register))
+  body.append('verify', String(verify))
   return fetch('/api/identify', { method: 'POST', body }).then(json)
 }
 
@@ -122,3 +131,21 @@ export function saveSighting(result, { notes = '', file = null } = {}) {
 }
 
 export const thumbUrl = (id) => `/api/sightings/${encodeURIComponent(id)}/thumb`
+
+// ── The deck ──────────────────────────────────────────────
+export const deck = () => fetch('/api/deck').then(json)
+export const deckStats = () => fetch('/api/deck/stats').then(json)
+export const deleteCard = (key) =>
+  fetch(`/api/deck/${encodeURIComponent(key)}`, { method: 'DELETE' }).then(json)
+
+/** Card photo. Keys contain a colon ('ext:Ara macao'), so they must be encoded. */
+export const cardThumbUrl = (key) => `/api/deck/${encodeURIComponent(key)}/thumb`
+
+/** Force a card in when neither model was confident enough to file it. */
+export function registerCard(result, file = null) {
+  const body = new FormData()
+  body.append('result', JSON.stringify(result))
+  body.append('force', 'true')
+  if (file) body.append('image', file)
+  return fetch('/api/deck/register', { method: 'POST', body }).then(json)
+}

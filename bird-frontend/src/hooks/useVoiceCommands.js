@@ -22,7 +22,7 @@ const INTENTS = [
   { intent: 'stop', patterns: [/^(stop|quiet|silence|shut up|be quiet)\b/, /stop (talking|reading|speaking)/] },
   { intent: 'compare', patterns: [/compare (it |this )?(with|to) (?<target>.+)/, /difference between .+ and (?<target>.+)/] },
   { intent: 'listen', patterns: [/^(listen|audio|identify by sound)/, /identify (the )?(call|song|sound)/] },
-  { intent: 'lifeList', patterns: [/(open|show|go to) (my )?life list/, /what have i seen/] },
+  { intent: 'lifeList', patterns: [/(open|show|go to) (my )?(life list|deck|collection)/, /what have i (seen|caught|collected)/] },
   { intent: 'fieldGuide', patterns: [/(open|show|go to) (the )?field guide/, /browse species/] },
 ]
 
