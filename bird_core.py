@@ -385,15 +385,53 @@ else:
           "(every input will be treated as a known bird)")
 
 
-def energy_score(logits, temperature=1.0):
-    """Free energy of a logit vector. Lower means more in-distribution."""
+def _score_energy(logits, t):
+    """Free energy — reads un-normalised logit mass. Lower = more in-distribution."""
+    return -t * torch.logsumexp(logits / t, dim=1)
+
+
+def _score_msp(logits, t):
+    """Negated max softmax probability (Hendrycks & Gimpel 2017)."""
+    return -F.softmax(logits / t, dim=1).max(dim=1).values
+
+
+def _score_entropy(logits, t):
+    """Softmax entropy — high when the model is spread across many species."""
+    logp = F.log_softmax(logits / t, dim=1)
+    return -(logp.exp() * logp).sum(dim=1)
+
+
+def _score_margin(logits, _t):
+    """Negated gap between the top two logits — thin gap means 'between classes'."""
+    top2 = logits.topk(2, dim=1).values
+    return -(top2[:, 0] - top2[:, 1])
+
+
+# Registry shared with scripts/fit_openset.py, which imports it rather than
+# reimplementing the maths. A threshold is only meaningful against the exact
+# score it was fitted with, so there must be exactly one definition of each.
+OPENSET_SCORES = {
+    "energy":  _score_energy,
+    "msp":     _score_msp,
+    "entropy": _score_entropy,
+    "margin":  _score_margin,
+}
+
+
+def openset_score(logits, method="msp", temperature=1.0):
+    """Open-set score for a batch of logits. Lower always means more in-distribution."""
+    try:
+        fn = OPENSET_SCORES[method]
+    except KeyError:
+        raise ValueError(f"unknown open-set method {method!r}; "
+                         f"expected one of {sorted(OPENSET_SCORES)}") from None
     t = torch.as_tensor(temperature, dtype=logits.dtype, device=logits.device)
-    return (-t * torch.logsumexp(logits / t, dim=1)).detach().cpu().numpy()
+    return fn(logits, t).detach().cpu().numpy()
 
 
 def openset_verdict(logits):
     """Decide whether `logits` came from one of the 200 known species."""
-    score = float(energy_score(logits, OPENSET["temperature"])[0])
+    score = float(openset_score(logits, OPENSET["method"], OPENSET["temperature"])[0])
     if not OPENSET["enabled"]:
         return {"enabled": False, "is_bird": True, "score": score,
                 "threshold": None, "method": OPENSET["method"], "margin": None}

@@ -1,0 +1,26 @@
+{
+  "method": "entropy",
+  "score": "entropy@T=2",
+  "temperature": 2.0,
+  "threshold": 5.077694892883301,
+  "target_tpr": 0.95,
+  "tpr": 0.9501466275659824,
+  "auroc": 0.9450439882697947,
+  "fpr_near_bird": 0.46153846153846156,
+  "fpr_animal": 0.0,
+  "fpr_nonanimal": 0.03333333333333333,
+  "held_out": {
+    "threshold": 5.049897265434265,
+    "tpr": 0.9122807017543859,
+    "fpr_near_bird": 0.38461538461538464,
+    "fpr_animal": 0.0,
+    "fpr_nonanimal": 0.0,
+    "seed": 42
+  },
+  "n_id": 341,
+  "n_ood": 200,
+  "checkpoint": "best_bird_model_inference.pth",
+  "manifest_sha256": "d5deab2482502cafaca22dd8ad088af4a831cb755cb34fd7213e69117688061c",
+  "created": "2026-08-09",
+  "note": "Fitted by scripts/fit_openset.py. Accept an input as one of the 200 known species when score <= threshold. Rerun after changing the checkpoint \u2014 logit scale is checkpoint-specific and a stale threshold silently rejects real birds."
+}
