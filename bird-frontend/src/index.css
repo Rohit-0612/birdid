@@ -1,25 +1,127 @@
+/* Fonts first: @import rules must precede all other rules, and the Tailwind
+   import below expands into thousands of them. */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+
+   The palette keeps the identity the Gradio app already had — deep plum base,
+   violet accent — so the two surfaces read as one project. What is new is a
+   semantic confidence scale, because confidence is the single most repeated
+   datum in this app and it should never be communicated by a number alone.
+
+   Three typefaces, each with a job:
+     Fraunces   species names. A field guide sets its subjects in a serif.
+     Inter      everything structural.
+     JetBrains  measurements, scores, percentages — anything you compare.
+   ═══════════════════════════════════════════════════════════ */
+
+@theme {
+  /* Surfaces, darkest to lightest */
+  --color-void: #0b0910;
+  --color-base: #120f17;
+  --color-surface: #1a1522;
+  --color-raised: #221c2d;
+  --color-line: #2e2640;
+
+  /* Violet accent */
+  --color-accent: #a855f7;
+  --color-accent-bright: #c084fc;
+  --color-accent-dim: #7c3aed;
+
+  /* Text */
+  --color-ink: #ece9f1;
+  --color-ink-soft: #a29db0;
+  --color-ink-faint: #6b6577;
+
+  /* Confidence — the one scale that carries meaning, not decoration */
+  --color-high: #34d399;
+  --color-moderate: #fbbf24;
+  --color-low: #fb7185;
+  --color-reject: #f43f5e;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* This app is dark by design — it is a night-and-dawn birding tool and the
+   Gradio surface it grew out of was dark. Rather than ship a washed-out light
+   mode nobody asked for, the colour scheme is declared so form controls,
+   scrollbars and focus rings all render dark natively. */
 :root {
   color-scheme: dark;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-html,
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  padding: 0;
-  background: #0d0d0f;
-  color: #f5f5f7;
-  min-height: 100vh;
+  background: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-#root {
-  width: 100%;
-  min-height: 100vh;
+/* Keyboard users must always be able to see where they are. Every interactive
+   element inherits this unless it defines something better. */
+:focus-visible {
+  outline: 2px solid var(--color-accent-bright);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-button {
-  font-family: inherit;
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-accent) 28%, transparent);
+  border-radius: 99px;
+  border: 3px solid var(--color-base);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-accent) 45%, transparent);
+}
+
+/* ── Reusable primitives ─────────────────────────────────── */
+@utility card {
+  background: color-mix(in oklab, var(--color-surface) 70%, transparent);
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  backdrop-filter: blur(16px);
+}
+
+@utility hairline {
+  border-color: var(--color-line);
+}
+
+/* The sentence currently being spoken by the narrator. Deliberately subtle:
+   it tracks along while you read, it does not shout. */
+@utility speaking {
+  background: color-mix(in oklab, var(--color-accent) 18%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 10%, transparent);
+  border-radius: 3px;
+}
+
+/* Respect the OS setting. Everything below is decoration; none of it carries
+   information that is lost when it stops moving. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

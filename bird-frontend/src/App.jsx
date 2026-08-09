@@ -1,353 +1,255 @@
-import { useState, useRef, useCallback } from 'react';
-import DotField from './components/DotField';
-import './App.css';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  AudioLines, BookMarked, Bird, Mic, MicOff, ScanSearch, ShieldQuestion,
+  Volume2, VolumeX,
+} from 'lucide-react'
 
-// All backend requests go through the Vite proxy (see vite.config.js),
-// which forwards /gradio_api/* to http://127.0.0.1:7860. This avoids CORS.
-const API_PREFIX = '/gradio_api';
-const FN_INDEX = 0; // first registered .click() in bird_complete_local.py = predict_bird
+import DotField from './components/DotField'
+import { Chip } from './components/primitives'
+import { IdentifyView } from './views/IdentifyView'
+import { ListenView } from './views/ListenView'
+import { GuideView } from './views/GuideView'
+import { LifeListView } from './views/LifeListView'
+import { ExplainView } from './views/ExplainView'
+import { useSpeech } from './hooks/useSpeech'
+import { useVoiceCommands } from './hooks/useVoiceCommands'
+import * as api from './lib/api'
 
-function randomSessionHash() {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-}
+const VIEWS = [
+  { id: 'identify', label: 'Identify', icon: ScanSearch },
+  { id: 'listen', label: 'Listen', icon: AudioLines },
+  { id: 'guide', label: 'Field guide', icon: Bird },
+  { id: 'life', label: 'Life list', icon: BookMarked },
+  { id: 'explain', label: 'How it works', icon: ShieldQuestion },
+]
 
-function parseBirdResult(text) {
-  if (!text || typeof text !== 'string') {
-    return { species: 'Unknown', confidence: '—', habitat: '—', migration: '—', similar: '', raw: String(text || '') };
-  }
-  const get = (re) => {
-    const m = text.match(re);
-    return m ? m[1].trim() : '';
-  };
-  const species = get(/SPECIES\s*:\s*([^\n]+)/i) || 'Unknown';
-  const confidence =
-    get(/((?:HIGH|MODERATE|LOW)\s+CONFIDENCE\s*\([^)]+\)[^\n]*)/i) || '—';
-  const habitat = get(/FOUND IN\s*:\s*([^\n]+)/i) || '—';
-  const migration = get(/MIGRATION\s*:\s*([^\n]+)/i) || '—';
-  const similarMatch = text.match(/LOOKS SIMILAR TO\s*:\s*([^\n]+)[\s\S]*?How to tell apart\s*:\s*([^\n]+)/i);
-  const similar = similarMatch ? `${similarMatch[1].trim()} — ${similarMatch[2].trim()}` : '';
-  return { species, confidence, habitat, migration, similar, raw: text };
-}
+export default function App() {
+  const [view, setView] = useState('identify')
+  const [health, setHealth] = useState(null)
+  const [guideFocus, setGuideFocus] = useState(null)
+  const [toast, setToast] = useState(null)
 
-function App() {
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const fileInputRef = useRef(null);
-  const uploadSectionRef = useRef(null);
+  const speech = useSpeech()
 
-  const scrollToUpload = () => {
-    uploadSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleFile = useCallback((file) => {
-    if (!file || !file.type.startsWith('image/')) {
-      setError('Please select a valid image file.');
-      return;
+  // The active view registers a handler for the commands it owns. Held in a ref
+  // so a spoken command dispatches as an event rather than as state a child has
+  // to watch — which is both simpler to follow and avoids re-render cascades.
+  const viewVoiceHandler = useRef(null)
+  const registerVoiceHandler = useCallback((handler) => {
+    viewVoiceHandler.current = handler
+    return () => {
+      if (viewVoiceHandler.current === handler) viewVoiceHandler.current = null
     }
-    setError(null);
-    setResult(null);
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target.result);
-    reader.readAsDataURL(file);
-  }, []);
+  }, [])
 
-  const onFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
-  };
+  useEffect(() => {
+    api.health().then(setHealth).catch(() => setHealth(null))
+  }, [])
 
-  const onDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
-  };
+  const goto = useCallback((next, payload) => {
+    setView(next)
+    if (next === 'guide' && payload?.folder) setGuideFocus(payload.folder)
+  }, [])
 
-  const onDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const onDragLeave = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const identifyBird = async () => {
-    if (!imageFile) return;
-    setIsLoading(true);
-    setError(null);
-    setResult(null);
-
-    const session_hash = randomSessionHash();
-
-    try {
-      // 1) Upload the image to Gradio so we get a server-side path back.
-      const fd = new FormData();
-      fd.append('files', imageFile);
-      const uploadRes = await fetch(
-        `${API_PREFIX}/upload?upload_id=${session_hash}`,
-        { method: 'POST', body: fd }
-      );
-      if (!uploadRes.ok) {
-        throw new Error(`Upload failed (${uploadRes.status})`);
+  // Global commands are handled here; the rest go to the active view.
+  const handleCommand = useCallback(
+    (command) => {
+      const { intent, target } = command
+      if (intent === 'stop') {
+        speech.cancel()
+        return
       }
-      const uploaded = await uploadRes.json();
-      const serverPath = Array.isArray(uploaded) ? uploaded[0] : uploaded;
-      if (!serverPath) throw new Error('No path returned from upload');
-
-      // 2) Submit the prediction job to the queue.
-      const payload = {
-        data: [
-          {
-            path: serverPath,
-            orig_name: imageFile.name,
-            size: imageFile.size,
-            mime_type: imageFile.type,
-            meta: { _type: 'gradio.FileData' },
-          },
-        ],
-        event_data: null,
-        fn_index: FN_INDEX,
-        trigger_id: null,
-        session_hash,
-      };
-      const joinRes = await fetch(`${API_PREFIX}/queue/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!joinRes.ok) {
-        const detail = await joinRes.text().catch(() => '');
-        throw new Error(`queue/join failed (${joinRes.status}) ${detail}`);
+      if (intent === 'listen') return setView('listen')
+      if (intent === 'lifeList') return setView('life')
+      if (intent === 'fieldGuide') return setView('guide')
+      if (intent === 'compare' && target) {
+        setToast(`Search the field guide for “${target}” and use the ⇆ buttons to compare.`)
+        return setView('guide')
       }
 
-      // 3) Stream events via SSE until the job completes.
-      const text = await new Promise((resolve, reject) => {
-        const source = new EventSource(
-          `${API_PREFIX}/queue/data?session_hash=${session_hash}`
-        );
-        const timeout = setTimeout(() => {
-          source.close();
-          reject(new Error('Timed out waiting for prediction'));
-        }, 120000);
+      if (viewVoiceHandler.current) {
+        viewVoiceHandler.current(command)
+      } else {
+        setToast(`Heard “${command.transcript}” — no command for that on this screen.`)
+      }
+    },
+    [speech],
+  )
 
-        source.onmessage = (evt) => {
-          try {
-            const msg = JSON.parse(evt.data);
-            if (msg.msg === 'process_completed') {
-              clearTimeout(timeout);
-              source.close();
-              if (msg.success === false) {
-                reject(new Error(msg.output?.error || 'Prediction failed'));
-                return;
-              }
-              const data = msg.output?.data;
-              resolve(Array.isArray(data) ? data[0] : data);
-            } else if (msg.msg === 'unexpected_error' || msg.msg === 'queue_full') {
-              clearTimeout(timeout);
-              source.close();
-              reject(new Error(msg.message || msg.msg));
-            }
-          } catch (parseErr) {
-            // ignore keep-alive / non-JSON
-          }
-        };
+  const voice = useVoiceCommands(handleCommand)
 
-        source.onerror = () => {
-          clearTimeout(timeout);
-          source.close();
-          reject(new Error('Connection to backend lost (SSE)'));
-        };
-      });
-
-      setResult(parseBirdResult(text));
-    } catch (err) {
-      setError(
-        `Could not reach the backend at http://127.0.0.1:7860. ` +
-          `Make sure bird_complete_local.py is running. (${err.message})`
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const clearImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setResult(null);
-    setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 3200)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   return (
-    <div className="app">
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero-bg">
-          <DotField />
+    <div className="relative min-h-screen">
+      {/* DotField measures its parent and sizes itself to 100% of it, so it needs
+          a container with a resolvable height — inside an auto-height wrapper it
+          would compute to zero and render nothing. Fixed and inset-0 gives it the
+          viewport, and pointer-events-none keeps it from eating clicks (it tracks
+          the cursor on window, so it still reacts). */}
+      <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
+        <DotField />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-[1500px] px-4 pb-16 sm:px-6">
+        <Header health={health} speech={speech} voice={voice} />
+
+        <nav className="mb-6 flex gap-1 overflow-x-auto pb-1" aria-label="Views">
+          {VIEWS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              aria-current={view === id ? 'page' : undefined}
+              className={`inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
+                view === id
+                  ? 'bg-(--color-accent)/15 text-(--color-accent-bright)'
+                  : 'text-(--color-ink-faint) hover:bg-(--color-surface)/60 hover:text-(--color-ink-soft)'
+              }`}
+            >
+              <Icon size={15} strokeWidth={2} />
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <main>
+          {view === 'identify' && (
+            <IdentifyView
+              speech={speech}
+              registerVoiceHandler={registerVoiceHandler}
+              onGoto={goto}
+            />
+          )}
+          {view === 'listen' && <ListenView speech={speech} />}
+          {view === 'guide' && <GuideView focusFolder={guideFocus} speech={speech} />}
+          {view === 'life' && <LifeListView />}
+          {view === 'explain' && <ExplainView health={health} />}
+        </main>
+
+        <footer className="mt-12 border-t border-(--color-line) pt-5 text-xs text-(--color-ink-faint)">
+          EfficientNetV2-S on CUB-200-2011 · calls by BirdNET · notes by a local language model,
+          not expert-verified · everything runs on this machine
+        </footer>
+      </div>
+
+      {/* ── Voice status ── */}
+      {voice.listening && (
+        <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center px-4">
+          <div className="flex items-center gap-3 rounded-full border border-(--color-accent)/40 bg-(--color-surface)/95 px-5 py-3 shadow-2xl backdrop-blur">
+            <span className="relative flex size-3">
+              <span className="absolute inline-flex size-3 animate-ping rounded-full bg-(--color-accent) opacity-75" />
+              <span className="relative inline-flex size-3 rounded-full bg-(--color-accent)" />
+            </span>
+            <span className="text-sm text-(--color-ink)">
+              {voice.interim || 'Listening… release to send'}
+            </span>
+          </div>
         </div>
-        <div className="hero-content">
-          <h1 className="hero-title">
-            <span className="hero-emoji">🐦</span> Bird Species Identifier
-          </h1>
-          <p className="hero-subtitle">
-            AI-powered identification of 200 bird species
-          </p>
-          <button className="cta-button" onClick={scrollToUpload}>
-            Try it Now <span className="cta-arrow">↓</span>
+      )}
+
+      {(toast || voice.error) && (
+        <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center px-4">
+          <button
+            onClick={() => {
+              setToast(null)
+              voice.clearError()
+            }}
+            className="max-w-md cursor-pointer rounded-xl border border-(--color-line) bg-(--color-surface)/95 px-4 py-3 text-sm text-(--color-ink-soft) shadow-2xl backdrop-blur"
+          >
+            {voice.error || toast}
           </button>
         </div>
-      </section>
-
-      {/* UPLOAD & RESULTS */}
-      <section className="upload-section" ref={uploadSectionRef}>
-        <div className="container">
-          <h2 className="section-title">Upload a Bird Photo</h2>
-          <p className="section-subtitle">
-            Drop an image below and let the model identify the species
-          </p>
-
-          <div className="upload-grid">
-            <div
-              className={`dropzone ${isDragging ? 'dragging' : ''} ${
-                imagePreview ? 'has-image' : ''
-              }`}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onClick={() => !imagePreview && fileInputRef.current?.click()}
-            >
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={onFileChange}
-                style={{ display: 'none' }}
-              />
-              {imagePreview ? (
-                <div className="preview-wrapper">
-                  <img src={imagePreview} alt="Preview" className="preview-image" />
-                  <button
-                    className="clear-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearImage();
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <div className="dropzone-empty">
-                  <div className="dropzone-icon">📷</div>
-                  <p className="dropzone-text">
-                    <strong>Drag & drop</strong> a bird photo here
-                  </p>
-                  <p className="dropzone-hint">or click to browse</p>
-                </div>
-              )}
-            </div>
-
-            <div className="results-panel">
-              <button
-                className="identify-button"
-                onClick={identifyBird}
-                disabled={!imageFile || isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="spinner" /> Identifying...
-                  </>
-                ) : (
-                  'Identify Bird'
-                )}
-              </button>
-
-              {error && <div className="error-box">{error}</div>}
-
-              {result && (
-                <div className="result-box">
-                  <div className="result-row">
-                    <span className="result-label">Species</span>
-                    <span className="result-value species">{result.species}</span>
-                  </div>
-                  <div className="result-row">
-                    <span className="result-label">Confidence</span>
-                    <span className="result-value">{result.confidence}</span>
-                  </div>
-                  <div className="result-row">
-                    <span className="result-label">Habitat</span>
-                    <span className="result-value">{result.habitat}</span>
-                  </div>
-                  <div className="result-row">
-                    <span className="result-label">Migration</span>
-                    <span className="result-value">{result.migration}</span>
-                  </div>
-                  {result.similar && (
-                    <div className="result-row">
-                      <span className="result-label">Similar Species</span>
-                      <span className="result-value">{result.similar}</span>
-                    </div>
-                  )}
-                  <details className="result-raw">
-                    <summary>Full output (top 5 predictions)</summary>
-                    <pre>{result.raw}</pre>
-                  </details>
-                </div>
-              )}
-
-              {!result && !error && !isLoading && (
-                <div className="placeholder-box">
-                  Results will appear here after identification.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURE CARDS */}
-      <section className="features-section">
-        <div className="container">
-          <h2 className="section-title">What You Get</h2>
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">🌍</div>
-              <h3 className="feature-title">Habitat Info</h3>
-              <p className="feature-text">
-                Discover where each species lives, its preferred environment, and global range.
-              </p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">✈️</div>
-              <h3 className="feature-title">Migration Data</h3>
-              <p className="feature-text">
-                Learn migration patterns, seasonal movements, and travel routes for each bird.
-              </p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">⚠️</div>
-              <h3 className="feature-title">Similar Species Warnings</h3>
-              <p className="feature-text">
-                Get alerted to look-alike species so you can spot the subtle differences.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="footer">
-        Built with EfficientNet V2 + PyTorch | React Bits DotField UI
-      </footer>
+      )}
     </div>
-  );
+  )
 }
 
-export default App;
+function Header({ health, speech, voice }) {
+  return (
+    <header className="flex flex-wrap items-center justify-between gap-4 py-7">
+      <div>
+        <h1 className="font-display text-3xl leading-none text-(--color-ink) sm:text-4xl">
+          Bird<span className="text-(--color-accent)">ID</span>
+        </h1>
+        <p className="mt-2 text-sm text-(--color-ink-faint)">
+          Identify birds by photo or call, ask about them, keep a life list
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {health && (
+          <>
+            <Chip title="Compute device the model is running on">{health.device_label}</Chip>
+            <Chip title="Species the photo model can name">{health.num_species} species</Chip>
+            {health.openset?.enabled ? (
+              <Chip tone="high" title="Photos that are not one of the known species get rejected">
+                open-set on
+              </Chip>
+            ) : (
+              <Chip tone="moderate" title="Run scripts/fit_openset.py to enable rejection">
+                open-set off
+              </Chip>
+            )}
+            {!health.model_audited && (
+              <Chip tone="moderate" title="This checkpoint has no recorded training split — see How it works">
+                unaudited
+              </Chip>
+            )}
+          </>
+        )}
+
+        {/* ── Voice controls ── */}
+        <div className="flex items-center gap-1.5 rounded-full border border-(--color-line) bg-(--color-surface)/60 p-1">
+          <button
+            onClick={speech.toggleMute}
+            disabled={!speech.supported}
+            aria-label={speech.muted ? 'Unmute the narrator' : 'Mute the narrator'}
+            title={
+              !speech.supported
+                ? 'This browser has no speech synthesis'
+                : speech.muted
+                  ? 'Voice output is off'
+                  : 'Voice output is on'
+            }
+            className={`cursor-pointer rounded-full p-2 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
+              speech.muted
+                ? 'text-(--color-ink-faint) hover:text-(--color-ink-soft)'
+                : 'text-(--color-accent-bright) hover:bg-(--color-accent)/15'
+            }`}
+          >
+            {speech.muted ? <VolumeX size={16} strokeWidth={2} /> : <Volume2 size={16} strokeWidth={2} />}
+          </button>
+
+          <button
+            onMouseDown={voice.start}
+            onMouseUp={voice.stop}
+            onMouseLeave={() => voice.listening && voice.stop()}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              voice.start()
+            }}
+            onTouchEnd={voice.stop}
+            disabled={!voice.supported}
+            aria-label="Hold to speak a command"
+            title={
+              voice.supported
+                ? 'Hold to speak — or hold the space bar. Try “tell me about it”.'
+                : 'This browser has no speech recognition. Try Chrome or Safari.'
+            }
+            className={`cursor-pointer rounded-full p-2 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
+              voice.listening
+                ? 'bg-(--color-accent) text-white'
+                : 'text-(--color-ink-faint) hover:bg-(--color-accent)/15 hover:text-(--color-accent-bright)'
+            }`}
+          >
+            {voice.supported ? <Mic size={16} strokeWidth={2} /> : <MicOff size={16} strokeWidth={2} />}
+          </button>
+        </div>
+      </div>
+    </header>
+  )
+}
