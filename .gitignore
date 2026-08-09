@@ -19,6 +19,12 @@ data/openset/*
 !data/openset/manifest.json
 !data/openset/threshold.json
 
+# Verifier: the fitted threshold is small and makes the feature work out of the
+# box, so it is committed. The 12 MB text-embedding cache is regenerated from the
+# BirdNET label file in ~35s and is not.
+data/verifier/*
+!data/verifier/threshold.json
+
 # ── Generated output ─────────────────────────────────────────
 evaluation/
 results.json

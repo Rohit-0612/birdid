@@ -1,0 +1,18 @@
+# Open-vocabulary identification (services/verifier.py) — names birds outside the
+# 200 the trained classifier covers.
+#
+#   pip3 install -r requirements-verify.txt
+#
+# BioCLIP is a CLIP model trained on Tree-of-Life imagery for species
+# identification. It scores a photo against species *names*, so it is not limited
+# to a fixed class list: the candidate labels come from birdnetlib's 6,522-species
+# label file, which is already on disk.
+#
+# First use downloads ~400 MB of weights from HuggingFace and caches them under
+# ~/.cache/huggingface. That download is the only network dependency in this
+# project, and it happens once — inference afterwards is fully local.
+#
+# Without these packages the app still works: /api/identify returns
+# verification.ran = false and the deck falls back to the classifier's own answer.
+open_clip_torch>=2.24.0
+timm>=1.0.0

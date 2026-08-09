@@ -1,0 +1,28 @@
+{
+  "model": "hf-hub:imageomics/bioclip",
+  "prompt": "a photo of {sci} with common name {common}.",
+  "min_score": 0.3298122644424438,
+  "min_margin": 0.015143853425979615,
+  "target_precision": 0.9,
+  "measured": {
+    "near_bird": {
+      "n": 130,
+      "species": 26,
+      "top1": 0.6384615384615384,
+      "top5": 0.7384615384615385,
+      "not_in_vocabulary": 0.19230769230769232,
+      "top1_when_possible": 0.7904761904761904,
+      "precision_at_threshold": 0.9146341463414634,
+      "coverage_at_threshold": 0.780952380952381
+    },
+    "id": {
+      "n": 341,
+      "top1": 0.436950146627566,
+      "top5": 0.49560117302052786
+    }
+  },
+  "candidates": 6423,
+  "labels_sha256": "b50b77b7c3dfe40cd637e8cccdca0173a0a4ddee8867b830ff3c1a566f477f16",
+  "created": "2026-08-09",
+  "note": "Fitted by scripts/eval_verifier.py on the labelled ood/near_bird tier of data/openset/manifest.json. Accept a name when similarity >= min_score and margin >= min_margin. Rerun if the BirdNET label file or the prompt template changes."
+}
