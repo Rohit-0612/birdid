@@ -1,0 +1,11 @@
+# HTTP API layer (api.py) — serves the React dashboard in bird-frontend/.
+#
+# Needs the runtime deps too:
+#   pip3 install -r requirements.txt -r requirements-api.txt
+#
+# The LLM endpoints (/api/narrate, /api/chat, /api/compare) additionally want
+# requirements-llm.txt and a running `ollama serve`. Without them the API still
+# works — those endpoints return generated:false with template text.
+fastapi==0.121.3
+uvicorn[standard]==0.38.0
+python-multipart==0.0.20

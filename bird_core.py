@@ -656,7 +656,7 @@ def render_spectrogram(y, sr, detections, save_path):
 
 
 def identify_audio(audio_path, use_location=False, lat=39.83, lon=-98.58,
-                   obs_date=None, min_conf=0.25):
+                   obs_date=None, min_conf=0.25, spectrogram_path=None):
     """Identify a bird from a recording. Returns the structured result dict.
 
     `use_location` is off by default and that is deliberate. BirdNET treats
@@ -714,8 +714,11 @@ def identify_audio(audio_path, use_location=False, lat=39.83, lon=-98.58,
                         "Grab test recordings from xeno-canto.org",
                     ]}
 
+        # Callers serving over HTTP pass a unique path: a fixed filename would
+        # be cached by the browser and show the previous clip's spectrogram.
         spec_path = render_spectrogram(
-            y, sr, detections, os.path.join(SAVE_DIR, "audio_analysis.png"))
+            y, sr, detections,
+            spectrogram_path or os.path.join(SAVE_DIR, "audio_analysis.png"))
 
         # Group by species: one bird singing eight times is one bird, not eight
         # detections. Report its best score and how often it was heard.

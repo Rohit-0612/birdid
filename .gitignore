@@ -24,7 +24,16 @@ evaluation/
 results.json
 .gradio/
 server.log
+api.log
+web.log
 *.pid
+
+# Personal data: the life list is the user's own sighting history, plus the
+# thumbnails of photos they uploaded. Never committed.
+data/sightings.db
+data/sightings.db-wal
+data/sightings.db-shm
+data/sightings/
 
 # ── Secrets ──────────────────────────────────────────────────
 .env
