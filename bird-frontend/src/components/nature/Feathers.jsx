@@ -1,5 +1,8 @@
 import { motion, useReducedMotion } from 'motion/react'
 
+import { mulberry32 } from '../../lib/rng'
+import { FOREST_SEED } from './atmosphere'
+
 /**
  * A few feathers drifting down the page.
  *
@@ -25,16 +28,23 @@ const COUNT = 6
  * React's lint rules reject it, correctly: under concurrent rendering the same
  * component can render twice and the feathers would jump. Seeding here happens
  * exactly once, and there is exactly one Feathers instance in the app.
+ *
+ * Seeded rather than random for a second reason too: with this, every generated
+ * part of the ambient layer — forest, feathers, flight path — is deterministic,
+ * so two screenshots of the same scroll position are comparable and a visual
+ * regression is a real signal instead of noise.
  */
+const rnd = mulberry32(FOREST_SEED ^ 0x9e37)
+
 const FEATHERS = Array.from({ length: COUNT }, (_, i) => ({
   id: i,
-  left: 6 + Math.random() * 88, // vw
-  size: 10 + Math.random() * 12,
-  duration: 26 + Math.random() * 26,
-  delay: -Math.random() * 40, // negative: already mid-flight on first paint
-  sway: 30 + Math.random() * 70,
-  spin: (Math.random() < 0.5 ? -1 : 1) * (140 + Math.random() * 220),
-  opacity: 0.1 + Math.random() * 0.14,
+  left: 6 + rnd() * 88, // vw
+  size: 10 + rnd() * 12,
+  duration: 26 + rnd() * 26,
+  delay: -rnd() * 40, // negative: already mid-flight on first paint
+  sway: 30 + rnd() * 70,
+  spin: (rnd() < 0.5 ? -1 : 1) * (140 + rnd() * 220),
+  opacity: 0.1 + rnd() * 0.14,
 }))
 
 export function Feathers() {

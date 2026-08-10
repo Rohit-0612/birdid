@@ -74,10 +74,108 @@
   /* Organic shape language: generous, slightly irregular corners. */
   --radius-card: 1.25rem;
   --radius-organic: 1.75rem 1rem 1.75rem 1rem;
+  --radius-pill: 999px;
 
   /* On light, depth comes from shadow rather than from borders. */
   --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -10px rgba(15, 23, 42, 0.1);
   --shadow-lift: 0 2px 4px rgba(15, 23, 42, 0.05), 0 18px 40px -16px rgba(15, 23, 42, 0.18);
+
+  /* Four stops on a roughly geometric progression. A real soft shadow is not one
+     blur — it is a tight dark contact edge under the object fading into a wide
+     faint pool, and approximating that with a single stop is most of why flat UI
+     shadows look pasted on. Reserved for the lifted state; --shadow-soft stays
+     the resting one. */
+  --shadow-ambient:
+    0 1px 1px rgba(15, 23, 42, 0.035), 0 2px 4px rgba(15, 23, 42, 0.035),
+    0 8px 16px -6px rgba(15, 23, 42, 0.06), 0 24px 48px -18px rgba(15, 23, 42, 0.14);
+
+  /* The highlight a raised surface catches from the sky above it. Delivered as an
+     inset shadow rather than a ::before, so `card` never needs `position:
+     relative` — several call sites are plain divs in flow and giving them a
+     stacking context would be a needless blast radius. */
+  --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+
+  /* ── Paper grain ──
+     Two tiles, because one is a film-grain plugin and two is paper: a fine tile
+     for photographic grain and a coarse one for fibre and mottle.
+
+     Rasterised once, as an image decode, then composited by the GPU as a plain
+     repeating bitmap — no per-frame cost, no JS, no request, and present before
+     first paint. A live feTurbulence filter on a fixed full-viewport element is a
+     known scroll-performance hazard, and a WebGL shader would mean a second
+     permanent GL context running a full-screen fragment pass forever for an
+     effect that never moves.
+
+     Two attributes are load-bearing. Without stitchTiles the tile seams are
+     plainly visible; without the saturate-0 matrix feTurbulence emits RGB noise,
+     which is coloured confetti rather than grain. */
+  --grain-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+  --grain-coarse: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.24' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23m)'/%3E%3C/svg%3E");
+
+  /* Cards blend their grain with background-blend-mode, which — unlike the page
+     layer — has no opacity to turn down. So the attenuation is baked into the
+     tile: feComponentTransfer compresses the noise from [0,1] into [0.34,0.66],
+     and soft-light against a value that near mid-grey is close to identity.
+     Same effect as a low opacity, achieved where a knob actually exists. */
+  --grain-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.32' intercept='0.34'/%3E%3CfeFuncG type='linear' slope='0.32' intercept='0.34'/%3E%3CfeFuncB type='linear' slope='0.32' intercept='0.34'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23c)'/%3E%3C/svg%3E");
+
+  /* Kept in step with GRAIN_ALPHA in components/nature/atmosphere.js, which
+     scripts/contrast.mjs measures against a 6% luminance budget. */
+  --grain-opacity: 0.055;
+
+  /* ── Forest band alphas ──
+     Per theme, because the same alpha is not the same effect in both. In light,
+     foliage is darker than the page and low-alpha silhouettes sit back politely.
+     In dark, --color-canopy inverts to a *lighter* green than the ground, and
+     light-on-dark at matched alpha reads far more strongly — at these light
+     values the dark theme had a forest crowding the text. Roughly halved there.
+
+     Depth is carried by DEPTH_MIX in atmosphere.js, not by these; they are
+     near-equal on purpose. scripts/contrast.mjs holds them to a regression
+     against the canopy that shipped before. */
+  --band-ridge: 0.11;
+  --band-trees: 0.11;
+  --band-near: 0.075;
+  --band-fringe: 0.07;
+
+  /* ── Dawn warmth ──
+     How much --color-sun bleeds into the sky near the horizon, and how strong
+     the sun's own glow is. Per theme for the same reason the bands are: dark
+     mode's sun is a saturated yellow, and yellow mixed into near-black is brown.
+     At the light values the dark theme had a band of mud along the bottom. */
+  --sky-warm-mid: 1.5%;
+  --sky-warm-low: 3%;
+  --sun-glow: 9%;
+  --shaft-strength: 13%;
+
+  /* Ceiling on the hero bird's drop shadow. Faint: there is no ground plane
+     under it, only the page, so this reads as the shadow it would cast on the
+     canopy far below rather than as a hard contact shadow. */
+  --bird-shadow-max: 0.1;
+
+  /* ── Type scale ──
+     Named by role rather than size, so the views ask for what a thing *is*.
+     Lora needs materially less negative tracking than Raleway at the same size,
+     which is why --text-display (the serif h1) is tuned tighter than the sans
+     headings below it. */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.45;
+  --text-micro--letter-spacing: 0.09em;
+  --text-caption: 0.78125rem;
+  --text-caption--line-height: 1.5;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.62;
+  --text-lede: 1.0625rem;
+  --text-lede--line-height: 1.55;
+  --text-heading: 1.375rem;
+  --text-heading--line-height: 1.25;
+  --text-heading--letter-spacing: -0.012em;
+  --text-title: 1.875rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.018em;
+  --text-display: clamp(2.25rem, 1.6rem + 2.4vw, 3.35rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.028em;
 }
 
 /* ── Dark: a forest at night ──────────────────────────────────
@@ -125,6 +223,28 @@
 
     --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
     --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -16px rgba(0, 0, 0, 0.7);
+    --shadow-ambient:
+      0 1px 1px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.3),
+      0 8px 16px -6px rgba(0, 0, 0, 0.45), 0 24px 48px -18px rgba(0, 0, 0, 0.7);
+    /* A dark surface catches far less sky, so the top highlight nearly vanishes;
+       at the light value it reads as a seam rather than a lit edge. */
+    --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+
+    /* Soft-light barely registers against near-black, so dark needs more grain
+       to land at the same perceived texture. Still inside the 6% budget. */
+    --grain-opacity: 0.085;
+
+    --band-ridge: 0.055;
+    --band-trees: 0.055;
+    --band-near: 0.038;
+    --band-fringe: 0.034;
+
+    --sky-warm-mid: 0.5%;
+    --sky-warm-low: 1.2%;
+    --sun-glow: 4%;
+    --shaft-strength: 4%;
+  --bird-shadow-max: 0.05;
+    --bird-shadow-max: 0.05;
   }
 }
 
@@ -159,6 +279,23 @@
 
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
   --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -16px rgba(0, 0, 0, 0.7);
+  --shadow-ambient:
+    0 1px 1px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 8px 16px -6px rgba(0, 0, 0, 0.45), 0 24px 48px -18px rgba(0, 0, 0, 0.7);
+  --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+
+  --grain-opacity: 0.085;
+
+  --band-ridge: 0.055;
+  --band-trees: 0.055;
+  --band-near: 0.038;
+  --band-fringe: 0.034;
+
+  --sky-warm-mid: 0.5%;
+  --sky-warm-low: 1.2%;
+  --sun-glow: 4%;
+  --shaft-strength: 4%;
+  --bird-shadow-max: 0.05;
 }
 
 /* Let form controls, scrollbars and the caret follow the theme natively. */
@@ -211,19 +348,61 @@ body {
 }
 
 /* ── Reusable primitives ─────────────────────────────────── */
+
+/* The page ground, textured. Sits inside the ambient wrapper, which carries
+   `isolation: isolate` so this blend can never reach the content layer above it.
+   Grain belongs in backgrounds, never over text. */
+@utility grain {
+  background-image: var(--grain-fine), var(--grain-coarse);
+  /* Explicit, in CSS pixels: without it the tile is resampled at DPR 2 and 3,
+     which both softens the grain and makes the stitched seams reappear. */
+  background-size: 180px 180px, 420px 420px;
+  background-repeat: repeat, repeat;
+  opacity: var(--grain-opacity);
+  /* soft-light rather than overlay: it lightens and darkens symmetrically, so
+     the same tile works on mint paper and on a forest night. */
+  mix-blend-mode: soft-light;
+}
+
 @utility card {
-  background: var(--color-surface);
+  /* background-blend-mode rather than mix-blend-mode: this blends the grain into
+     the card's *own* background colour and cannot affect child content, so glyph
+     legibility is untouched. Cards need the texture too — otherwise the page
+     reads as a textured background carrying sterile white boxes. */
+  background-color: var(--color-surface);
+  background-image: var(--grain-card);
+  background-size: 180px 180px;
+  background-blend-mode: soft-light;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-soft), var(--shadow-inner-light);
+}
+
+/* Deliberately separate from `card`, not folded into it. DeckView sets its own
+   `transition-[transform,box-shadow,border-color]` on the same elements; two
+   `transition` declarations in the utilities layer resolve by source order,
+   which is not something to leave to chance across 34 call sites. */
+@utility card-interactive {
+  transition:
+    box-shadow 260ms var(--ease-out-soft),
+    border-color 260ms var(--ease-out-soft),
+    transform 260ms var(--ease-out-soft);
+}
+
+/* The lifted state: the four-stop shadow, for hover and focus. */
+@utility card-lift {
+  box-shadow: var(--shadow-ambient), var(--shadow-inner-light);
 }
 
 /* Glass, for panels that float over the animated background. */
 @utility card-glass {
-  background: color-mix(in oklab, var(--color-surface) 82%, transparent);
+  background-color: color-mix(in oklab, var(--color-surface) 82%, transparent);
+  background-image: var(--grain-card);
+  background-size: 180px 180px;
+  background-blend-mode: soft-light;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-soft), var(--shadow-inner-light);
   backdrop-filter: blur(14px) saturate(1.1);
   -webkit-backdrop-filter: blur(14px) saturate(1.1);
 }
@@ -289,5 +468,22 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Someone who has asked the OS for more contrast has asked for exactly the thing
+   texture takes away. Zeroing the token removes the grain everywhere at once —
+   the page ground, the cards and the glass — because they all read it. */
+@media (prefers-contrast: more) {
+  :root {
+    --grain-opacity: 0;
+  }
+}
+
+/* Grain is a screen effect. On paper it is at best invisible and at worst a
+   sheet of grey ink. */
+@media print {
+  .grain {
+    display: none;
   }
 }

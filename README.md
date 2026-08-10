@@ -194,7 +194,16 @@ the LLM and the verifier stubbed, including that a missing Ollama daemon or a
 missing BioCLIP degrades rather than 500s. Tests that need the gitignored datasets
 skip rather than fail, and the deck is redirected to a scratch database.
 
-Frontend: `cd bird-frontend && npx eslint src && npm run build`.
+Frontend: `cd bird-frontend && npm run lint && npm run build`.
+
+`npm run contrast` is the gate for the design tokens. `src/index.css` documents a
+measured contrast ratio next to almost every colour and tells you to check them
+before editing; this script is what does the checking. It verifies every
+documented foreground/background pair in both themes, asserts the two
+hand-duplicated dark blocks have not drifted apart, asserts the values the
+comments record as *rejected* still fail, and holds the ambient forest and the
+paper grain to a budget — the composited page must depart from the base colour
+less than the canopy that shipped before it did. Run it after touching any token.
 
 ## Environment variables
 
@@ -211,7 +220,16 @@ Frontend: `cd bird-frontend && npx eslint src && npm run build`.
 
 ## Credits and licensing
 
+This project is released under the [MIT License](LICENSE). The datasets, models
+and media it depends on carry their own terms, listed below.
+
 - **CUB-200-2011** — Caltech-UCSD Birds, Wah et al. 2011.
+- **Hero bird model** — `bird-frontend/public/models/stork.glb`, from the three.js
+  example assets and credited there as "Stork by mirada from rome". MIT, as part
+  of the three.js repository. Full note in `public/models/ATTRIBUTION.txt`. The
+  file is unmodified; the app rewrites its vertex colours and material at load.
+- **Animated nav indicator** — the shared-`layoutId` technique is adapted from
+  ibelick's Animated Tabs on 21st.dev (MIT), hand-ported to plain JSX.
 - **BirdNET** — Cornell Lab of Ornithology, via `birdnetlib`.
 - **Audio and open-set photos** — Wikimedia Commons, all CC or public domain.
   Attribution for every file is in `bird_audio_samples/manifest.json` and

@@ -1,81 +1,185 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 
+import { buildForest, bucketWidth } from './forest'
+import { SUN, FOREST_SEED, PARALLAX, DEPTH_MIX, SHAFT_PERIODS } from './atmosphere'
+
 /**
- * Layered foliage silhouettes that parallax against scroll.
+ * The place the app is standing in.
  *
- * This is what gives the page a *place*. Without it the app is a grid of cards on
- * a tint; with it you are looking out from under a canopy. Three depth bands move
- * at different rates, which is the whole trick — parallax is read as distance.
+ * Four depth bands of generated forest, a dawn sky behind them, and light
+ * leaking through the canopy. Without this the app is a grid of cards on a tint;
+ * with it you are looking out from under a canopy.
  *
- * Hand-drawn SVG paths rather than images: they scale to any viewport, cost about
- * two kilobytes, and recolour themselves from the theme token.
+ * Two ideas do most of the work here, and both replace something the previous
+ * version got wrong.
+ *
+ * **Depth comes from colour, not from opacity.** The old bands were the same
+ * flat green at 7%, 10% and 9%, which is not what distance looks like: distant
+ * things converge on the colour of the air in front of them, they do not merely
+ * fade. Each band is now mixed toward --color-base in proportion to its
+ * distance, and the alphas are nearly equal. Because the mix runs toward the
+ * page colour, it inverts correctly in dark mode for free — no conditional.
+ *
+ * **The geometry is generated, not drawn.** See forest.js.
  */
-
-/** Distant ridgeline — barely there, moves least. */
-const RIDGE =
-  'M0 120 C 120 96 210 108 320 84 C 430 60 520 96 640 72 C 760 48 850 84 960 66 C 1070 48 1160 78 1280 60 L1280 200 L0 200 Z'
-
-/** Mid-ground treeline. */
-const TREES =
-  'M0 150 L28 118 L44 138 L70 96 L92 130 L118 104 L140 140 L172 110 L196 144 L224 116 L250 148 ' +
-  'L280 108 L306 142 L336 118 L362 150 L394 112 L420 146 L452 122 L478 152 L510 114 L538 148 ' +
-  'L568 120 L596 150 L628 110 L656 144 L686 118 L714 150 L746 116 L774 146 L806 122 L834 152 ' +
-  'L866 112 L894 146 L926 120 L954 150 L986 116 L1014 144 L1046 120 L1074 150 L1106 114 ' +
-  'L1134 146 L1166 120 L1194 150 L1226 116 L1254 144 L1280 124 L1280 200 L0 200 Z'
-
-/** Foreground leaves, hanging from the top edge. */
-const LEAVES =
-  'M0 0 L1280 0 L1280 26 C 1210 30 1180 66 1120 58 C 1060 50 1046 18 990 30 ' +
-  'C 934 42 928 78 866 70 C 804 62 800 26 742 34 C 684 42 680 82 616 72 ' +
-  'C 552 62 552 24 492 32 C 432 40 430 80 366 70 C 302 60 306 22 244 30 ' +
-  'C 182 38 178 74 118 64 C 58 54 46 24 0 30 Z'
-
 export function Canopy() {
   const reduced = useReducedMotion()
   const { scrollY } = useScroll()
+  const ref = useRef(null)
+  const [size, setSize] = useState({ width: 1280, height: 800 })
 
-  // Deeper layers move less. With reduced motion the transforms collapse to zero
-  // and the silhouettes simply sit still.
-  const ridgeY = useTransform(scrollY, [0, 1200], [0, reduced ? 0 : 40])
-  const treesY = useTransform(scrollY, [0, 1200], [0, reduced ? 0 : 90])
-  const leavesY = useTransform(scrollY, [0, 1200], [0, reduced ? 0 : -60])
+  // Measure the container rather than the window: this element is fixed and
+  // inset-0, but reading it directly means no assumption about that holding.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => {
+      const rect = el.getBoundingClientRect()
+      setSize((prev) =>
+        // Bucketed width, so a drag does not thrash regeneration; raw height,
+        // which only changes on rotate or a devtools resize.
+        bucketWidth(rect.width) === bucketWidth(prev.width) && Math.abs(rect.height - prev.height) < 24
+          ? prev
+          : { width: rect.width, height: rect.height },
+      )
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const w = bucketWidth(size.width)
+  const h = Math.max(320, Math.round(size.height))
+
+  // ~4ms at desktop widths, and only on a bucket boundary.
+  const forest = useMemo(() => buildForest({ seed: FOREST_SEED, width: w, height: h }), [w, h])
+
+  // Deeper layers move less; the fringe moves against the scroll, which is what
+  // sells it as being in front of the viewport rather than behind it.
+  const p = (distance) => (reduced ? 0 : distance)
+  const farY = useTransform(scrollY, [0, 1200], [0, p(PARALLAX.ridge)])
+  const midY = useTransform(scrollY, [0, 1200], [0, p(PARALLAX.trees)])
+  const nearY = useTransform(scrollY, [0, 1200], [0, p(PARALLAX.near)])
+  const fringeY = useTransform(scrollY, [0, 1200], [0, p(PARALLAX.fringe)])
+
+  const viewBox = `0 0 ${w} ${h}`
+
+  /**
+   * Atmospheric perspective. `percent` is how much foliage colour survives the
+   * air; the rest is the page. Far bands also get pushed a little toward the sun
+   * colour, because haze scatters warm.
+   */
+  const band = (percent, warm = 0) => {
+    const base = `color-mix(in oklab, var(--color-canopy) ${percent}%, var(--color-base))`
+    return warm ? `color-mix(in oklab, ${base} ${100 - warm}%, var(--color-sun))` : base
+  }
 
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* Sky wash: a hint of warmth at the horizon, as though it were early. */}
+    <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Dawn sky. A vertical ramp for the sky itself, then one elliptical glow
+          placed off-centre at the shared sun position — a glow centred at 50% is
+          both the most overused hero background there is and directionless, and
+          every shadow and rim light in the app keys off this same point. */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            'radial-gradient(120% 60% at 50% 100%, color-mix(in oklab, var(--color-sun) 10%, transparent), transparent 70%)',
+          background: `
+            linear-gradient(
+              to bottom,
+              color-mix(in oklab, var(--color-canopy) 5%, var(--color-base)) 0%,
+              var(--color-base) 40%,
+              color-mix(in oklab, var(--color-sun) var(--sky-warm-mid), var(--color-base)) 82%,
+              color-mix(in oklab, var(--color-sun) var(--sky-warm-low), var(--color-base)) 100%
+            )`,
+        }}
+      />
+      {/* The sun itself. Tight and weak on purpose: at 22% over a wide ellipse
+          this was a peach blob across the bottom third of the page in light and
+          olive sludge in dark. Warmth at the horizon should be something you
+          notice only if you look for it. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(
+            38% 26% at ${SUN.x * 100}% ${SUN.y * 100}%,
+            color-mix(in oklab, var(--color-sun) var(--sun-glow), transparent),
+            transparent 70%
+          )`,
         }}
       />
 
+      {/* Light through the canopy. Three shafts on pairwise-coprime periods, so
+          the combination does not repeat inside any session anyone will sit
+          through. Blurred hard: a crisp shaft reads as a graphic, a soft one as
+          light. */}
+      {!reduced &&
+        SHAFT_PERIODS.map((period, i) => (
+          <motion.div
+            key={period}
+            className="absolute"
+            style={{
+              left: `${SUN.x * 100 - 26 + i * 17}%`,
+              top: '-30%',
+              width: `${13 + i * 5}%`,
+              height: '150%',
+              transformOrigin: '50% 0%',
+              rotate: `${-24 + i * 15}deg`,
+              filter: 'blur(28px)',
+              // Strength is a per-theme token: dark mode's sun is a saturated
+              // yellow and at the light value these three shafts smeared a
+              // olive haze across the whole masthead.
+              background: `linear-gradient(
+                to bottom,
+                color-mix(in oklab, var(--color-sun) calc(var(--shaft-strength) - ${i * 3}%), transparent),
+                transparent 72%
+              )`,
+            }}
+            animate={{ opacity: [0.3, 0.7, 0.3], scaleX: [1, 1.14, 1] }}
+            transition={{ duration: period, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+
+      {/* Far ridge. */}
       <motion.svg
-        style={{ y: ridgeY }}
-        viewBox="0 0 1280 200"
-        preserveAspectRatio="none"
-        className="absolute inset-x-0 bottom-0 h-[38vh] w-full opacity-[0.07]"
+        style={{ y: farY, willChange: 'transform' }}
+        viewBox={viewBox}
+        className="absolute inset-0 h-full w-full"
       >
-        <path d={RIDGE} fill="var(--color-canopy)" />
+        {/* fill via style, not the presentation attribute: color-mix() in an SVG
+            fill= has been unreliable in Safari, where the CSSOM path is fine. */}
+        <path d={forest.far} style={{ fill: band(DEPTH_MIX.ridge, 8), opacity: 'var(--band-ridge)' }} />
       </motion.svg>
 
+      {/* Mid treeline. */}
       <motion.svg
-        style={{ y: treesY }}
-        viewBox="0 0 1280 200"
-        preserveAspectRatio="none"
-        className="absolute inset-x-0 bottom-0 h-[26vh] w-full opacity-[0.10]"
+        style={{ y: midY, willChange: 'transform' }}
+        viewBox={viewBox}
+        className="absolute inset-0 h-full w-full"
       >
-        <path d={TREES} fill="var(--color-canopy)" />
+        <path d={forest.mid} style={{ fill: band(DEPTH_MIX.trees, 4), opacity: 'var(--band-trees)' }} />
       </motion.svg>
 
+      {/* Near trunks, thrown slightly out of focus. Depth of field on the
+          nearest layer only is the strongest photographic cue available here,
+          and it costs one rasterisation — the blur is baked once and then
+          composited, because motion only animates transform. */}
       <motion.svg
-        style={{ y: leavesY }}
-        viewBox="0 0 1280 100"
-        preserveAspectRatio="none"
-        className="absolute inset-x-0 top-0 h-[16vh] w-full opacity-[0.09]"
+        style={{ y: nearY, willChange: 'transform', filter: 'blur(1.3px)' }}
+        viewBox={viewBox}
+        className="absolute inset-0 h-full w-full"
       >
-        <path d={LEAVES} fill="var(--color-canopy)" />
+        <path d={forest.near} style={{ fill: band(DEPTH_MIX.near), opacity: 'var(--band-near)' }} />
+      </motion.svg>
+
+      {/* Canopy overhead, further out of focus because it is closer still. */}
+      <motion.svg
+        style={{ y: fringeY, willChange: 'transform', filter: 'blur(2px)' }}
+        viewBox={viewBox}
+        className="absolute inset-0 h-full w-full"
+      >
+        <path d={forest.fringe} style={{ fill: band(DEPTH_MIX.fringe), opacity: 'var(--band-fringe)' }} />
       </motion.svg>
     </div>
   )

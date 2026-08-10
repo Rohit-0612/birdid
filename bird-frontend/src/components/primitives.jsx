@@ -139,7 +139,7 @@ export function Chip({ children, tone = 'neutral', title }) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.72rem] font-medium whitespace-nowrap ${tones[tone] ?? tones.neutral}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-caption font-medium whitespace-nowrap ${tones[tone] ?? tones.neutral}`}
     >
       {children}
     </span>
@@ -165,7 +165,7 @@ export function Taxonomy({ order, family, name }) {
 export function SectionTitle({ children, right }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-4">
-      <h3 className="text-[0.72rem] font-semibold tracking-[0.14em] text-(--color-ink-faint) uppercase">
+      <h3 className="text-micro font-semibold text-(--color-ink-faint) uppercase">
         {children}
       </h3>
       {right}
@@ -193,8 +193,8 @@ export function EmptyState({ icon: Icon, title, children }) {
           <Icon size={20} strokeWidth={1.5} />
         </span>
       )}
-      <p className="font-display text-lg text-(--color-ink)">{title}</p>
-      <p className="max-w-sm text-sm leading-relaxed text-(--color-ink-faint)">{children}</p>
+      <p className="font-display text-heading text-(--color-ink)">{title}</p>
+      <p className="max-w-sm text-body text-(--color-ink-faint)">{children}</p>
     </div>
   )
 }
