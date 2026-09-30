@@ -65,3 +65,6 @@ dist/
 # Intermediate build artifact for the knowledge base; species_kb.json is
 # the committed output. Keeps the resumable cache out of history.
 data/species_kb.jsonl
+
+# Design reference images — third-party mockups, not ours to redistribute
+uiux/
