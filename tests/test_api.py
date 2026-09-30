@@ -1,7 +1,7 @@
 """API smoke tests over FastAPI's TestClient — no server needed.
 
 The LLM is stubbed throughout. These tests assert the HTTP contract: status
-codes, response shapes, path-traversal guards, and that a missing Ollama daemon
+codes, response shapes, path-traversal guards, and that a missing language model
 degrades instead of 500ing. Whether qwen3 writes good prose is not something a
 test can pin, and mocking it keeps the suite fast and offline.
 """
@@ -214,19 +214,40 @@ def test_chat_stream_emits_grounding_then_tokens_then_done(client, monkeypatch):
     assert "".join(e["text"] for e in events if e["type"] == "token") == "Blue Jays eat acorns."
 
 
-def test_chat_stream_reports_an_llm_failure_in_band(client, monkeypatch):
-    """Once the stream has started, an error can only arrive as an event."""
+def test_chat_stream_falls_back_to_the_field_guide_when_no_llm_answers(client, monkeypatch):
+    """Every provider down before the first token: the answer is the KB entry,
+    delivered as ordinary tokens — no error event, never an error screen."""
     from services import llm
 
     def explode(*a, **k):
-        raise RuntimeError("ollama died mid-stream")
+        raise llm.LLMUnavailable("ollama: down; groq: down")
         yield  # pragma: no cover — makes this a generator function
 
     monkeypatch.setattr(llm, "chat", explode)
-    with client.stream("POST", "/api/chat/stream", json={"question": "hi"}) as res:
+    with client.stream("POST", "/api/chat/stream",
+                       json={"question": "what do blue jays eat?", "folder": "073.Blue_Jay"}) as res:
         assert res.status_code == 200
         events = [json.loads(line[6:]) for line in res.iter_lines()
                   if line.startswith("data: ")]
+    assert not any(e["type"] == "error" for e in events)
+    text = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "field guide says" in text and "Blue Jay" in text
+    assert events[-1]["type"] == "done"
+
+
+def test_chat_stream_reports_a_mid_answer_failure_in_band(client, monkeypatch):
+    """Once tokens have been shown, a failure can only arrive as an event."""
+    from services import llm
+
+    def partial(*a, **k):
+        yield "Blue Jays "
+        raise RuntimeError("connection dropped")
+
+    monkeypatch.setattr(llm, "chat", partial)
+    with client.stream("POST", "/api/chat/stream", json={"question": "hi"}) as res:
+        events = [json.loads(line[6:]) for line in res.iter_lines()
+                  if line.startswith("data: ")]
+    assert [e["text"] for e in events if e["type"] == "token"] == ["Blue Jays "]
     assert any(e["type"] == "error" for e in events)
     assert events[-1]["type"] == "done"
 

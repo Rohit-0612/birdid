@@ -61,8 +61,8 @@ async def lifespan(app):
           f"{bird_core.DEVICE_LABEL}, open-set "
           f"{'ON' if bird_core.OPENSET['enabled'] else 'OFF'}")
     status = llm.available()
-    print(f"🤖 Ollama {'ready' if status['ok'] else 'unavailable'} — "
-          f"{status.get('reason', status['model'])}")
+    print(f"🤖 LLM {'ready via ' + status['provider'] if status['ok'] else 'unavailable — template text'}"
+          f" — {status.get('reason', status['model'])}")
     verify_status = verifier.available()
     if verify_status["ok"]:
         print(f"🔍 Verifier ready — {verify_status['species']} species, loads on "
@@ -370,17 +370,23 @@ async def chat_stream(payload: dict):
 
     def events():
         yield f"data: {json.dumps({'type': 'grounding', 'folders': folders})}\n\n"
+        streamed = False
         try:
             for piece in llm.chat(question, context, history=payload.get("history"),
                                   model=payload.get("model"), stream=True):
+                streamed = True
                 yield f"data: {json.dumps({'type': 'token', 'text': piece})}\n\n"
         except Exception as e:
-            # The stream has already started, so an error has to arrive in-band.
-            yield ("data: " + json.dumps({
-                "type": "error",
-                "text": "The local language model is not reachable. "
-                        "Start it with `ollama serve`.",
-                "reason": f"{type(e).__name__}: {e}"}) + "\n\n")
+            if not streamed:
+                # Every provider failed before saying anything: answer from the
+                # field guide instead, as ordinary text. Never an error screen.
+                yield f"data: {json.dumps({'type': 'token', 'text': llm.template_answer(context)})}\n\n"
+            else:
+                # Cut off mid-answer: keep what arrived and say so in-band.
+                yield ("data: " + json.dumps({
+                    "type": "error",
+                    "text": " …the answer was cut off. Try asking again.",
+                    "reason": f"{type(e).__name__}: {e}"}) + "\n\n")
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream",
