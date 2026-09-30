@@ -1,0 +1,28 @@
+# Runtime dependencies for the API on a Hugging Face Space (Python 3.12).
+# Gradio itself comes from the Space SDK. Pinned to the versions the API is
+# developed and tested against locally.
+torch==2.11.0
+torchvision==0.26.0
+pillow==12.0.0
+numpy==1.26.4
+matplotlib==3.10.7
+grad-cam==1.5.5
+
+# Calls: BirdNET needs a TensorFlow Lite runtime but does not declare one.
+birdnetlib==0.18.1
+tensorflow-cpu==2.21.0
+librosa==0.11.0
+soundfile==0.13.1
+
+# HTTP API
+fastapi==0.121.3
+uvicorn[standard]==0.38.0
+python-multipart==0.0.20
+
+# Second identifier (BioCLIP)
+open_clip_torch==3.3.0
+timm==1.0.28
+
+# Language models: Ollama client (unused on the Space, fails fast) and httpx for Groq
+ollama==0.6.2
+httpx==0.28.1

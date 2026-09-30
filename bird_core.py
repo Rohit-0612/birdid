@@ -84,7 +84,14 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 
 
 def pick_device():
-    """CUDA if present, else Apple-Silicon MPS, else CPU."""
+    """BIRD_DEVICE if set, else CUDA if present, else Apple-Silicon MPS, else CPU.
+
+    The override exists for hosts that report a GPU the process should not use —
+    a Hugging Face ZeroGPU Space emulates CUDA outside its GPU-scoped functions.
+    """
+    forced = os.environ.get("BIRD_DEVICE", "").strip().lower()
+    if forced in ("cpu", "cuda", "mps"):
+        return torch.device(forced)
     if torch.cuda.is_available():
         return torch.device("cuda")
     if torch.backends.mps.is_available():
