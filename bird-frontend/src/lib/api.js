@@ -1,9 +1,9 @@
 /**
  * The whole HTTP surface, in one place.
  *
- * Every path is relative: Vite proxies /api to 127.0.0.1:8000 in dev, and in a
- * built deployment the API serves the bundle from the same origin. No base URL
- * to configure, no CORS.
+ * Every path is relative: Vite proxies /api to 127.0.0.1:8000 in dev, and on
+ * Vercel a rewrite in vercel.json forwards /api to the Hugging Face Space. No
+ * base URL to configure, no CORS.
  */
 
 async function json(res) {

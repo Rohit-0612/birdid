@@ -51,7 +51,7 @@ export function ConfidenceGauge({ value = 0, band = 'low', size = 168 }) {
         <div className="font-mono text-3xl leading-none font-medium tabular-nums" style={{ color }}>
           {pct(value)}
         </div>
-        <div className="mt-1 text-[0.68rem] tracking-wide text-(--color-ink-faint) uppercase">
+        <div className="mt-1 text-caption text-(--color-ink-faint)">
           confidence
         </div>
       </div>
@@ -165,7 +165,7 @@ export function Taxonomy({ order, family, name }) {
 export function SectionTitle({ children, right }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-4">
-      <h3 className="text-micro font-semibold text-(--color-ink-faint) uppercase">
+      <h3 className="text-caption font-semibold text-(--color-ink-soft)">
         {children}
       </h3>
       {right}

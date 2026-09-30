@@ -209,7 +209,16 @@ export function ExplainView({ health }) {
         <section className="card p-6">
           <SectionTitle>Language model</SectionTitle>
           <dl className="space-y-2.5 text-sm">
-            <Row label="Runtime" value="Ollama, local" />
+            <Row
+              label="Runtime"
+              value={
+                health.llm?.provider === 'groq'
+                  ? 'Groq (hosted fallback)'
+                  : health.llm?.provider === 'ollama'
+                    ? 'Ollama, local'
+                    : 'Template text only'
+              }
+            />
             <Row label="Model" value={health.llm?.model ?? 'n/a'} mono />
             <Row
               label="Reachable"
@@ -219,20 +228,24 @@ export function ExplainView({ health }) {
           <p className="mt-4 text-xs leading-relaxed text-(--color-ink-faint)">
             {health.llm?.ok
               ? 'Used for the spoken summaries, the chat answers and the comparison prose. Facts are passed in from the knowledge base and echoed, never recalled from the model, so sizes and conservation statuses cannot be invented.'
-              : `Not reachable (${health.llm?.reason ?? 'unknown'}). Spoken summaries and comparisons fall back to template text built from the knowledge base; nothing else is affected.`}
+              : `Not reachable (${health.llm?.reason ?? 'unknown'}). Spoken summaries, chat answers and comparisons fall back to template text built from the knowledge base; nothing else is affected.`}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-(--color-ink-faint)">
+            Tried in order: a local Ollama model, then Groq, then template text — so these features
+            always answer.
           </p>
         </section>
       </div>
 
       <section className="card flex flex-wrap gap-6 p-6 text-xs text-(--color-ink-faint)">
         <span className="inline-flex items-center gap-2">
-          <Cpu size={13} strokeWidth={2} /> Everything runs locally
+          <Cpu size={13} strokeWidth={2} /> Vision and audio models run on the server, not in a third-party API
         </span>
         <span className="inline-flex items-center gap-2">
-          <Database size={13} strokeWidth={2} /> Life list stored in SQLite on this machine
+          <Database size={13} strokeWidth={2} /> Life list stored in SQLite on the server
         </span>
         <span className="inline-flex items-center gap-2">
-          <ShieldQuestion size={13} strokeWidth={2} /> No API keys, no telemetry, no network calls
+          <ShieldQuestion size={13} strokeWidth={2} /> No telemetry; only chat text goes to Groq, and only when no local model is running
         </span>
       </section>
     </div>

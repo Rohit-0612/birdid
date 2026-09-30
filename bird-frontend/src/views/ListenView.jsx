@@ -157,7 +157,7 @@ export function ListenView({ speech }) {
           </div>
 
           <label className="mt-4 block">
-            <span className="text-[0.68rem] tracking-wider text-(--color-ink-faint) uppercase">
+            <span className="text-caption text-(--color-ink-faint)">
               Confidence threshold
             </span>
             <input
@@ -334,7 +334,7 @@ function AudioResult({ result, onSpeak, speech }) {
 function Detail({ label, value }) {
   return (
     <div>
-      <div className="text-[0.68rem] tracking-wider text-(--color-ink-faint) uppercase">{label}</div>
+      <div className="text-caption text-(--color-ink-faint)">{label}</div>
       <p className="mt-0.5 text-sm leading-relaxed text-(--color-ink-soft)">{value}</p>
     </div>
   )

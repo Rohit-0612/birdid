@@ -6,15 +6,12 @@
  * tells you to "run the ratio script" before changing any of them. That script
  * did not exist. This is it.
  *
- * It does four jobs:
+ * It does three jobs:
  *
  *   1. Checks every documented foreground/background pair in both themes.
- *   2. Asserts the two hand-duplicated dark blocks have not drifted apart.
- *   3. Asserts the values the comments say were *rejected* still fail, so a
+ *   2. Asserts the values the comments say were *rejected* still fail, so a
  *      future edit cannot quietly turn those comments into lies.
- *   4. Checks text against the *composited* page ground — base plus the forest
- *      bands plus the grain — because the ambient layer sits behind every word
- *      in the app and darkening it eats the margin the tokens were chosen for.
+ *   3. Holds the photo grain to a luminance budget in both themes.
  *
  * Zero dependencies; run with `npm run contrast`.
  */
@@ -61,21 +58,6 @@ function ratio(fg, bg) {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-/** Source-over compositing of a translucent layer onto an opaque one. */
-function composite(over, under, alpha) {
-  return over.map((c, i) => c * alpha + under[i] * (1 - alpha))
-}
-
-/** Approximates CSS `color-mix(in oklab, A p%, B)` closely enough for a budget check. */
-function mix(a, b, percent) {
-  const t = percent / 100
-  // Mixing in linear light rather than sRGB — oklab is perceptual, but linear is
-  // far closer to it than gamma-encoded sRGB, and this only feeds a threshold.
-  const lin = (c) => (c / 255 <= 0.03928 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4)
-  const enc = (c) => (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055) * 255
-  return a.map((_, i) => enc(lin(a[i]) * t + lin(b[i]) * (1 - t)))
-}
-
 /* ── parsing index.css ───────────────────────────────────── */
 
 const css = readFileSync(CSS_PATH, 'utf8')
@@ -111,17 +93,11 @@ function blockAt(marker, label) {
   return tokensAfter(css, at)
 }
 
-const light = blockAt('@theme', '@theme / light')
-// The media-query-guarded dark block, and the explicit-attribute one.
-const darkMedia = blockAt("@media (prefers-color-scheme: dark)", 'system-dark')
-const darkAttr = blockAt(":root[data-theme='dark']", 'explicit-dark')
 
-// Dark only redeclares what changes; everything else still comes from @theme.
-const dark = { ...light, ...darkAttr }
-
-/** Collapse whitespace so a multi-line shadow compares equal to a one-line one. */
-const normalised = (o) =>
-  Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v.replace(/\s+/g, ' ').trim()]))
+// Dark is the default and lives in @theme; light redeclares what changes.
+const dark = blockAt('@theme {', '@theme / dark')
+const lightAttr = blockAt(":root[data-theme='light'] {", 'explicit-light')
+const light = { ...dark, ...lightAttr }
 
 /* ── checks ─────────────────────────────────────────────── */
 
@@ -157,9 +133,9 @@ const PAIRS = [
   ['--color-ink-faint', '--color-surface', 4.5],
   ['--color-ink-faint', '--color-raised', 4.5],
   ['--color-on-accent', '--color-accent', 4.5],
-  // The "hover is darker, not lighter" rule this file's comments describe.
   ['--color-on-accent', '--color-accent-hover', 4.5],
   ['--color-on-reject', '--color-reject', 4.5],
+  ['--color-on-panel', '--color-panel', 7.0],
   ['--color-accent', '--color-base', 4.5],
   ['--color-accent', '--color-surface', 4.5],
   ['--color-sun-ink', '--color-base', 4.5],
@@ -173,134 +149,46 @@ const PAIRS = [
 
 console.log('\nDesign token contrast — src/index.css\n')
 
-console.log('Light theme')
-for (const [fg, bg, min] of PAIRS) checkPair(light, fg, bg, min, 'light')
-
-console.log('\nDark theme')
+console.log('Dark theme (default)')
 for (const [fg, bg, min] of PAIRS) checkPair(dark, fg, bg, min, 'dark')
 
-/* The two dark blocks are maintained by hand. Drift between them means the
-   in-app toggle and the OS setting would render different values — a bug that
-   is close to invisible in review and obvious to a user with both.
-   Every token, not just colours: shadows and grain opacities drift just as
-   easily, and an edit that adds a token to one block and not the other is the
-   most likely way it happens. */
-console.log('\nDuplicate dark blocks are in sync')
-{
-  const a = normalised(darkMedia)
-  const b = normalised(darkAttr)
-  const names = new Set([...Object.keys(a), ...Object.keys(b)])
-  let drift = 0
-  for (const name of names) {
-    if (a[name] !== b[name]) {
-      drift++
-      console.log(`  ✗ ${name}: system-dark ${a[name] ?? '(absent)'} vs explicit-dark ${b[name] ?? '(absent)'}`)
-    }
-  }
-  report(drift === 0, 'all dark tokens identical in both blocks', `${names.size} tokens`)
-}
+console.log('\nLight theme')
+for (const [fg, bg, min] of PAIRS) checkPair(light, fg, bg, min, 'light')
 
-/* The comments name specific values that were measured and rejected. If an edit
-   ever makes one of these pass, the comment has become wrong and should be
+/* The header of index.css names values that were measured and rejected. If an
+   edit ever makes one of these pass, the note has become wrong and should be
    updated deliberately rather than left to mislead the next reader. */
 console.log('\nDocumented rejections still fail')
 {
-  const cases = [
-    ['#6b7d73', light['--color-base'], 'light tertiary text (comment says 4.13:1)'],
-    ['#6b6577', darkAttr['--color-base'], 'old dark ink-faint (comment says 3.39:1)'],
-  ]
-  for (const [hex, bg, why] of cases) {
-    const r = ratio(parseHex(hex), parseHex(bg))
-    report(r < 4.5, `${hex} still below 4.5 — ${why}`, `${r.toFixed(2)}:1`)
-  }
-  // White on dark-mode accent: the comment says 1.74:1, which is why
-  // --color-on-accent has to flip with the theme.
-  const r = ratio(parseHex('#ffffff'), parseHex(darkAttr['--color-accent']))
-  report(r < 4.5, 'white on dark accent still fails — on-accent must flip', `${r.toFixed(2)}:1`)
+  const r1 = ratio(parseHex('#ffffff'), parseHex(dark['--color-accent']))
+  report(r1 < 4.5, 'white on the gold accent still fails — on-accent must stay dark', `${r1.toFixed(2)}:1`)
+  const r2 = ratio(parseHex(dark['--color-accent']), parseHex(light['--color-base']))
+  report(r2 < 4.5, 'dark-theme gold on light paper still fails — light needs its own accent', `${r2.toFixed(2)}:1`)
 }
 
-/* ── the ambient budget ─────────────────────────────────── */
-
-/**
- * The forest and the grain sit behind every word in the app, so they spend
- * contrast that the tokens were chosen to have.
- *
- * How this is measured matters, and the obvious approach is wrong. Treating each
- * band as an opaque wash covering the whole viewport scores the canopy that
- * *currently ships* at 3.21:1 in light mode — a flat failure for a design that
- * is in production and perfectly readable. The model overstates the damage
- * because the bands are silhouettes: trees and ridgelines cover a fraction of
- * their band's area, they sit at the top and bottom edges rather than behind
- * body text, and most text in this app is on an opaque card anyway.
- *
- * Rather than invent a coverage fudge factor, the gate is a *regression* test.
- * Same conservative model on both sides, so the unknown coverage cancels:
- * the new ambient stack must depart from --color-base less than today's does,
- * in both themes, with margin. That is objective and needs no magic number.
- *
- * The absolute ratios are still printed, clearly marked as a lower bound that
- * assumes 100% coverage, because the trend is worth watching even when the
- * number is pessimistic.
- */
-
-// DEPTH_MIX comes from the module the renderer uses; the alphas come from the
-// stylesheet, where they are declared per theme. Neither is duplicated here, so
-// neither can drift out of step with what actually renders.
-const { DEPTH_MIX, GRAIN_ALPHA } = await import('../src/components/nature/atmosphere.js')
-
-const BAND_KEYS = ['ridge', 'trees', 'near', 'fringe']
-
-function bandsFor(tokens) {
-  return BAND_KEYS.map((k) => {
-    const raw = tokens[`--band-${k}`]
-    if (raw === undefined) {
-      console.error(`✗ --band-${k} is missing from index.css`)
-      process.exit(1)
+/* scope-night hand-copies the dark tokens so the rail, hero and footer stay
+   dark in the light theme. A value that drifts from @theme would make those
+   patches a slightly different night from the rest of the dark page. */
+console.log('\nscope-night matches the dark theme')
+{
+  const night = blockAt('@utility scope-night {', 'scope-night')
+  let drift = 0
+  for (const [name, value] of Object.entries(night)) {
+    if (dark[name] !== value) {
+      drift++
+      console.log(`  ✗ ${name}: scope-night ${value} vs @theme ${dark[name] ?? '(absent)'}`)
     }
-    return { mix: DEPTH_MIX[k], alpha: Number.parseFloat(raw) }
-  })
+  }
+  report(drift === 0, 'every scope-night token equals its @theme value', `${Object.keys(night).length} tokens`)
+  checkPair(dark, '--color-paper-ink', '--color-paper', 7.0, 'fixed')
 }
 
-/** What ships today: three bands, undiluted foliage colour, opacity for depth. */
-const BASELINE = [
-  { mix: 100, alpha: 0.07 },
-  { mix: 100, alpha: 0.1 },
-  { mix: 100, alpha: 0.09 },
-]
-
-/** Must improve on the current design by at least this much. */
-const REQUIRED_MARGIN = 0.85
-
-function bandGround(bands, tokens) {
-  const base = parseHex(tokens['--color-base'])
-  const canopy = parseHex(tokens['--color-canopy'])
-  let ground = base
-  for (const b of bands) ground = composite(mix(canopy, base, b.mix), ground, b.alpha)
-  return ground
-}
-
-const departure = (ground, tokens) => {
-  const base = luminance(parseHex(tokens['--color-base']))
-  return Math.abs(luminance(ground) - base) / Math.max(base, 1e-4)
-}
-
-console.log('\nAmbient forest — regression against the canopy that ships today')
-for (const [themeName, tokens] of [
-  ['light', light],
-  ['dark', dark],
-]) {
-  const before = departure(bandGround(BASELINE, tokens), tokens)
-  const after = departure(bandGround(bandsFor(tokens), tokens), tokens)
-  report(
-    after <= before * REQUIRED_MARGIN,
-    `${themeName}: departure from base ${(after * 100).toFixed(1)}% vs current ${(before * 100).toFixed(1)}%`,
-    `need ≤${(before * REQUIRED_MARGIN * 100).toFixed(1)}%`,
-  )
-}
+/* ── grain budget ───────────────────────────────────────── */
 
 /**
- * Grain gets an absolute budget instead, since there is nothing to regress
- * against — today's design has none.
+ * Grain sits over photographs, and over the photographic hero that the headline
+ * is set on, so it gets an absolute budget: it may not shift the base luminance
+ * by more than 6%.
  *
  * Modelled with the real W3C soft-light formula, not source-over. Soft-light
  * against a mid-grey blend layer is very close to identity, which is precisely
@@ -323,38 +211,28 @@ const grainOver = (rgb, cs, alpha) =>
     return (softLight(cb, cs) * alpha + cb * (1 - alpha)) * 255
   })
 
+const departure = (ground, tokens) => {
+  const base = luminance(parseHex(tokens['--color-base']))
+  return Math.abs(luminance(ground) - base) / Math.max(base, 1e-4)
+}
+
 console.log('\nGrain overlay budget')
 for (const [themeName, tokens] of [
-  ['light', light],
   ['dark', dark],
+  ['light', light],
 ]) {
+  const alpha = Number.parseFloat(tokens['--grain-opacity'])
+  if (Number.isNaN(alpha)) {
+    report(false, `${themeName}: --grain-opacity`, 'missing')
+    continue
+  }
   const base = parseHex(tokens['--color-base'])
-  const grained = grainOver(base, GRAIN_CS_DARK, GRAIN_ALPHA[themeName])
-  const shift = departure(grained, tokens)
+  const shift = departure(grainOver(base, GRAIN_CS_DARK, alpha), tokens)
   report(
     shift <= GRAIN_MAX_SHIFT,
     `${themeName}: grain shifts base luminance by ${(shift * 100).toFixed(1)}%`,
     `budget ${(GRAIN_MAX_SHIFT * 100).toFixed(0)}%`,
   )
-}
-
-/* Informational only — assumes every band is a solid full-viewport wash, which
-   no silhouette is. Printed to watch the trend, not to gate on. */
-console.log('\nFull-coverage upper bound (informational — silhouettes are not solid)')
-for (const [themeName, tokens] of [
-  ['light', light],
-  ['dark', dark],
-]) {
-  const ground = grainOver(bandGround(bandsFor(tokens), tokens), GRAIN_CS_DARK, GRAIN_ALPHA[themeName])
-  const parts = ['--color-ink-faint', '--color-ink-soft', '--color-accent'].map((n) => {
-    const r = ratio(parseHex(tokens[n]), ground)
-    const now = ratio(
-      parseHex(tokens[n]),
-      grainOver(bandGround(BASELINE, tokens), GRAIN_CS_DARK, GRAIN_ALPHA[themeName]),
-    )
-    return `${n.replace('--color-', '')} ${r.toFixed(2)} (today ${now.toFixed(2)})`
-  })
-  console.log(`  · ${themeName}: ${parts.join(', ')}`)
 }
 
 /* ── result ─────────────────────────────────────────────── */

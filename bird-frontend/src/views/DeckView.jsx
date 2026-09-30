@@ -17,7 +17,7 @@ import * as api from '../lib/api'
  * Rejected uploads never appear here. If neither model was confident, nothing was
  * filed; the deck is meant to be a record, and a wrong card is worse than a gap.
  */
-export function DeckView({ speech, onGoto }) {
+export function DeckView({ speech, onGoto, refreshToken = 0 }) {
   const [deck, setDeck] = useState(null)
   const [catalogue, setCatalogue] = useState([])
   const [showAll, setShowAll] = useState(false)
@@ -38,7 +38,9 @@ export function DeckView({ speech, onGoto }) {
     return () => {
       cancelled = true
     }
-  }, [reloadKey])
+    // refreshToken lets the page ask for a refetch when the deck scrolls into
+    // view — the long-scroll equivalent of the remount a tab switch used to do.
+  }, [reloadKey, refreshToken])
 
   const remove = useCallback(async (key) => {
     await api.deleteCard(key)
@@ -241,7 +243,7 @@ function Card({ card, index, onSelect }) {
         </div>
         <div className="px-2.5 py-2">
           <p className="truncate text-xs text-(--color-ink-faint)">{card.display_name}</p>
-          <p className="mt-0.5 text-[0.62rem] tracking-wider text-(--color-ink-faint) uppercase">
+          <p className="mt-0.5 text-micro text-(--color-ink-faint)">
             not found
           </p>
         </div>
@@ -329,7 +331,7 @@ function CardDetail({ card, speech, onClose, onDelete, onOpenGuide }) {
   const isCub = card.source === 'cub'
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-(--color-ink)/45 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
       onClick={onClose}
       role="presentation"
     >
@@ -447,7 +449,7 @@ function CardDetail({ card, speech, onClose, onDelete, onOpenGuide }) {
 }
 
 /** Encounter history, kept below the deck — the event log the deck is derived from. */
-export function RecentEncounters() {
+export function RecentEncounters({ refreshToken = 0 }) {
   const [data, setData] = useState(null)
 
   useEffect(() => {
@@ -459,7 +461,7 @@ export function RecentEncounters() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshToken])
 
   if (!data?.sightings?.length) return null
 

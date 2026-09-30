@@ -9,12 +9,6 @@ const API = 'http://127.0.0.1:8000'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  build: {
-    // The Three.js hero is deliberately a large lazy chunk: it is dynamically
-    // imported on idle, so it never touches first paint. Raising the threshold
-    // keeps the warning meaningful for chunks that WOULD block startup.
-    chunkSizeWarningLimit: 700,
-  },
   server: {
     proxy: {
       '/api': {
