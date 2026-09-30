@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import { AudioLines, BookMarked, Bird, ScanSearch, ShieldQuestion } from 'lucide-react'
 
-import { Canopy } from './components/nature/Canopy'
-import { Feathers } from './components/nature/Feathers'
-import { Header } from './components/shell/Header'
-import { NavTabs } from './components/shell/NavTabs'
+import { SideRail } from './components/shell/SideRail'
+import { TopNav } from './components/shell/TopNav'
+import { Hero } from './components/sections/Hero'
+import { StatsBand } from './components/sections/StatsBand'
+import { SectionFrame } from './components/sections/SectionFrame'
+import { Footer } from './components/sections/Footer'
 import { useTheme } from './hooks/useTheme'
+import { useScrollSpy, scrollToSection } from './hooks/useScrollSpy'
 import { IdentifyView } from './views/IdentifyView'
 import { ListenView } from './views/ListenView'
 import { GuideView } from './views/GuideView'
@@ -14,24 +15,53 @@ import { DeckView, RecentEncounters } from './views/DeckView'
 import { ExplainView } from './views/ExplainView'
 import { useSpeech } from './hooks/useSpeech'
 import { useVoiceCommands } from './hooks/useVoiceCommands'
+import { PHOTOS } from './lib/photos'
 import * as api from './lib/api'
 
-const VIEWS = [
-  { id: 'identify', label: 'Identify', icon: ScanSearch },
-  { id: 'listen', label: 'Listen', icon: AudioLines },
-  { id: 'guide', label: 'Field guide', icon: Bird },
-  { id: 'deck', label: 'Deck', icon: BookMarked },
-  { id: 'explain', label: 'How it works', icon: ShieldQuestion },
+/**
+ * One long page. Every tool is a section, all mounted at once; the nav, the side
+ * rail and voice commands scroll to them rather than swapping them in.
+ *
+ * Two things a tab switch used to do implicitly are done explicitly here, so the
+ * views behave exactly as before:
+ *   · the deck refetched on every visit (it remounted) — now it is handed a new
+ *     refreshToken each time its section scrolls into view;
+ *   · "Open in field guide" landed on a freshly mounted guide, so the requested
+ *     species always won over whatever was open — now the guide is re-keyed on
+ *     each such request, which is the same remount.
+ */
+const SECTIONS = [
+  { id: 'identify', label: 'Identify' },
+  { id: 'listen', label: 'Listen' },
+  { id: 'guide', label: 'Field guide' },
+  { id: 'deck', label: 'Deck' },
+  { id: 'explain', label: 'How it works' },
 ]
+const SPY_IDS = ['top', ...SECTIONS.map((s) => s.id)]
+
+/** What one photo gets you, beside the Identify tool. */
+const IDENTIFY_RETURNS = [
+  ['The species', 'With a confidence gauge and the taxonomy trail.'],
+  ['Field marks', 'The details that confirm it, and every look-alike with how to tell them apart.'],
+  ['Where it looked', 'A heatmap of the pixels that drove the answer.'],
+  ['An honest no', 'When the photo isn’t one of the 200, a second model takes a look instead.'],
+]
+const RAIL_SECTIONS = [{ id: 'top', label: 'Top' }, ...SECTIONS]
 
 export default function App() {
-  const [view, setView] = useState('identify')
   const [health, setHealth] = useState(null)
   const [guideFocus, setGuideFocus] = useState(null)
+  const [guideRequest, setGuideRequest] = useState(0)
+  const [deckVisit, setDeckVisit] = useState(0)
   const [toast, setToast] = useState(null)
 
   const speech = useSpeech()
   const { theme, toggleTheme } = useTheme()
+  // Refetch the deck whenever it comes into view, so a bird identified further
+  // up the page is already on its card by the time you get there.
+  const active = useScrollSpy(SPY_IDS, 'top', (id) => {
+    if (id === 'deck') setDeckVisit((n) => n + 1)
+  })
 
   // The active view registers a handler for the commands it owns. Held in a ref
   // so a spoken command dispatches as an event rather than as state a child has
@@ -44,16 +74,34 @@ export default function App() {
     }
   }, [])
 
+  // Retried while it fails: a hosted backend that has gone to sleep answers
+  // only after it wakes, and the page should fill in by itself when it does.
   useEffect(() => {
-    api.health().then(setHealth).catch(() => setHealth(null))
+    let cancelled = false
+    let timer
+    const attempt = (n) =>
+      api
+        .health()
+        .then((h) => !cancelled && setHealth(h))
+        .catch(() => {
+          if (!cancelled && n < 24) timer = setTimeout(() => attempt(n + 1), 5000)
+        })
+    attempt(0)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [])
 
   const goto = useCallback((next, payload) => {
-    setView(next)
-    if (next === 'guide' && payload?.folder) setGuideFocus(payload.folder)
+    if (next === 'guide' && payload?.folder) {
+      setGuideFocus(payload.folder)
+      setGuideRequest((n) => n + 1)
+    }
+    scrollToSection(next)
   }, [])
 
-  // Global commands are handled here; the rest go to the active view.
+  // Global commands are handled here; the rest go to the view that registered.
   const handleCommand = useCallback(
     (command) => {
       const { intent, target } = command
@@ -61,12 +109,12 @@ export default function App() {
         speech.cancel()
         return
       }
-      if (intent === 'listen') return setView('listen')
-      if (intent === 'lifeList') return setView('deck')
-      if (intent === 'fieldGuide') return setView('guide')
+      if (intent === 'listen') return scrollToSection('listen')
+      if (intent === 'lifeList') return scrollToSection('deck')
+      if (intent === 'fieldGuide') return scrollToSection('guide')
       if (intent === 'compare' && target) {
         setToast(`Search the field guide for “${target}” and use the ⇆ buttons to compare.`)
-        return setView('guide')
+        return scrollToSection('guide')
       }
 
       if (viewVoiceHandler.current) {
@@ -86,77 +134,83 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
+  const shell = { speech, voice, theme, onToggleTheme: toggleTheme }
+
   return (
     <div className="relative min-h-screen">
-      {/* The ambient layer: parallax canopy behind, feathers drifting through,
-          grain over the lot. Fixed and inset-0 so children have a resolvable
-          height, pointer-events-none so it never eats a click.
+      <SideRail sections={RAIL_SECTIONS} active={active} {...shell} />
 
-          `isolation: isolate` is load-bearing, not decoration: it gives this
-          subtree its own stacking context so the grain's mix-blend-mode composites
-          against the canopy and stops there. Without it the blend would reach
-          through to the content layer and tint live text. */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0 [isolation:isolate]"
-        aria-hidden="true"
-      >
-        <Canopy />
-        <Feathers />
-        <div className="grain absolute inset-0" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-[1500px] px-4 pb-16 sm:px-6">
-        <Header
-          health={health}
-          speech={speech}
-          voice={voice}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
-
-        <NavTabs views={VIEWS} value={view} onChange={setView} />
+      <div className="lg:pl-(--rail)">
+        <TopNav sections={SECTIONS} active={active} {...shell} />
 
         <main>
-          {/* mode="wait" so the outgoing view finishes before the next arrives —
-              cross-fading two full dashboards at once looks like a glitch. Short
-              enough (180ms) that switching never feels like waiting. */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {view === 'identify' && (
-                <IdentifyView
-                  speech={speech}
-                  registerVoiceHandler={registerVoiceHandler}
-                  onGoto={goto}
-                />
-              )}
-              {view === 'listen' && <ListenView speech={speech} />}
-              {view === 'guide' && <GuideView focusFolder={guideFocus} speech={speech} />}
-              {view === 'deck' && (
-                <div className="space-y-6">
-                  <DeckView speech={speech} onGoto={goto} />
-                  <RecentEncounters />
-                </div>
-              )}
-              {view === 'explain' && <ExplainView health={health} />}
-            </motion.div>
-          </AnimatePresence>
+          <Hero health={health} />
+          <StatsBand health={health} />
+
+          <SectionFrame
+            id="identify"
+            title="Identify by photo"
+            lede="Drop in a photo, paste one, or click to browse. Every bird it names files itself into your deck — no save button."
+            aside={
+              <dl className="divide-y divide-(--color-line) border-y border-(--color-line)">
+                {IDENTIFY_RETURNS.map(([term, detail]) => (
+                  <div key={term} className="py-4">
+                    <dt className="font-display text-[1.05rem] font-bold text-(--color-ink)">{term}</dt>
+                    <dd className="mt-1 text-caption text-(--color-ink-soft)">{detail}</dd>
+                  </div>
+                ))}
+              </dl>
+            }
+          >
+            <IdentifyView speech={speech} registerVoiceHandler={registerVoiceHandler} onGoto={goto} />
+          </SectionFrame>
+
+          <SectionFrame
+            id="listen"
+            title="Identify by call"
+            lede="Record a few seconds of birdsong, upload a clip, or play one of the bundled recordings. BirdNET listens for about 6,500 species, including many the photo model has never seen."
+            photo={PHOTOS.wren}
+          >
+            <ListenView speech={speech} />
+          </SectionFrame>
+
+          <SectionFrame
+            id="guide"
+            title="Field guide"
+            lede="All 200 species the photo model knows. Search them, read their field marks, and put two side by side to see how to tell them apart."
+            photo={PHOTOS.brilliant}
+          >
+            <GuideView key={guideRequest} focusFolder={guideFocus} speech={speech} />
+          </SectionFrame>
+
+          <SectionFrame
+            id="deck"
+            title="Your deck"
+            lede="One card for every species you photograph. Complete the 200, and collect the birds beyond them that the second model names."
+            photo={PHOTOS.rufous}
+          >
+            <div className="space-y-6">
+              <DeckView speech={speech} onGoto={goto} refreshToken={deckVisit} />
+              <RecentEncounters refreshToken={deckVisit} />
+            </div>
+          </SectionFrame>
+
+          <SectionFrame
+            id="explain"
+            title="How it works"
+            lede="What each model does, where its numbers come from, and where not to trust them."
+            photo={PHOTOS.egret}
+          >
+            <ExplainView health={health} />
+          </SectionFrame>
         </main>
 
-        <footer className="mt-12 border-t border-(--color-line) pt-5 text-xs text-(--color-ink-faint)">
-          EfficientNetV2-S on CUB-200-2011 · calls by BirdNET · notes by a local language model,
-          not expert-verified · everything runs on this machine
-        </footer>
+        <Footer sections={SECTIONS} />
       </div>
 
       {/* ── Voice status ── */}
       {voice.listening && (
-        <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center px-4">
+        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
           <div className="card-glass flex items-center gap-3 rounded-(--radius-pill) px-5 py-3 shadow-[var(--shadow-ambient)]">
             <span className="relative flex size-3">
               <span className="absolute inline-flex size-3 animate-ping rounded-full bg-(--color-accent) opacity-75" />
@@ -170,7 +224,7 @@ export default function App() {
       )}
 
       {(toast || voice.error) && (
-        <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center px-4">
+        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
           <button
             onClick={() => {
               setToast(null)

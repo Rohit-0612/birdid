@@ -1,318 +1,182 @@
 /* Fonts first: @import rules must precede all other rules, and the Tailwind
    import below expands into thousands of them. */
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400&family=Raleway:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:ital,wght@0,400..700;1,400..600&family=JetBrains+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
 
 /* ═══════════════════════════════════════════════════════════
-   DESIGN TOKENS — Organic Biophilic
+   DESIGN TOKENS — Plumage
 
-   A field guide, not an admin panel. Mint paper, forest ink, sunlight through
-   the canopy for accents. Light is the default; dark is kept and shifted to a
-   forest night, because birding happens at dawn and dusk.
+   Warm night and macaw gold. The page is the dark mount a wildlife print sits
+   on: near-black with brown in it, so photographs of birds glow against it
+   rather than being cut out of it. Gold is the one accent — the underwing of a
+   blue-and-yellow macaw — and brown panels carry secondary surfaces.
 
-   Every value here is contrast-checked against its background. Light mode is
-   far less forgiving than dark and several plausible choices fail outright:
-   #6b7d73 for tertiary text lands at 4.13:1, and lightening the green on hover
-   drops white button text to 3.67:1. Both were measured and rejected. Run the
-   ratio script in the plan's verification section before changing any of these.
+   Dark is the default. Light is a warm paper theme reached by the toggle, and
+   is declared once under :root[data-theme='light'].
 
-   Three typefaces, each with a job:
-     Lora        species names. A field guide sets its subjects in a serif.
-     Raleway     everything structural.
-     JetBrains   measurements, scores, percentages — anything you compare.
+   Every text pair here is contrast-checked in both themes by scripts/contrast.mjs
+   (`npm run contrast`). Two choices were measured and rejected, and the script
+   asserts they still fail so these notes cannot quietly go stale:
+     · white text on the gold accent measures 2.07:1 — on-accent is a dark ink;
+     · the dark theme's gold as text on light paper measures 1.84:1 — the light
+       theme's accent is a deep ochre instead.
+
+   Two typefaces and a mono:
+     Bricolage Grotesque  headlines and species names — a grotesque with some
+                          wildness in its optical sizes, set big and tight.
+     Figtree              everything you read and click.
+     JetBrains Mono       scores and percentages — numbers you compare.
    ═══════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── Surfaces, lightest to deepest ── */
-  --color-base: #f4faf5; /* page ground — mint paper */
-  --color-surface: #ffffff; /* cards */
-  --color-raised: #eef6f0; /* insets, table stripes, inputs */
-  --color-void: #e6f1ea; /* deepest tint, used under overlays */
-  --color-line: #d8e9de; /* hairlines */
+  /* ── Surfaces, deepest to lightest ── */
+  --color-base: #100d0a; /* page ground — warm night */
+  --color-surface: #1a1511; /* cards */
+  --color-raised: #241d17; /* insets, inputs, table stripes */
+  --color-void: #0a0806; /* under overlays */
+  --color-line: #3a3027; /* hairlines */
+  /* The brown card from the reference: secondary panels, always dark, always
+     with light ink — it does not flip with the theme. */
+  --color-panel: #4b3b2d;
+  --color-on-panel: #f7f1e6;
+  /* The hero's white card. A fixed pair, like panel: never flips. */
+  --color-paper: #fffdf9;
+  --color-paper-ink: #1b150f;
 
-  /* ── Forest green ──
-     accent-hover is DARKER, not lighter: white text on a lighter green fails. */
-  --color-accent: #15803d;
-  --color-accent-hover: #116632;
-  /* Foreground for anything sitting ON the accent. It has to flip with the
-     theme: dark mode's accent is a bright green, and white text on it measures
-     1.74:1 — unreadable. Verified by the contrast script in both themes. */
-  --color-on-accent: #ffffff;
-  --color-accent-bright: #1c9950; /* glyphs and borders only, never behind white text */
-  --color-accent-dim: #7fc79b; /* secondary bar fills */
+  /* ── Macaw gold ── */
+  --color-accent: #e8a92a;
+  --color-on-accent: #1a1204;
+  --color-accent-hover: #f2bd4f;
+  --color-accent-bright: #f5c96a; /* glyphs and borders */
+  --color-accent-dim: #7a5a1c; /* secondary bar fills */
 
-  /* ── Canopy sunlight ──
-     sun is a graphic colour (3.01:1 — fine for shapes, fails as text);
-     sun-ink is its text-safe counterpart at 4.74:1. */
-  --color-sun: #d97706;
-  --color-sun-ink: #b45309;
+  /* ── Warm light, for highlights and the deck's sheen ── */
+  --color-sun: #f0b44c;
+  --color-sun-ink: #f5c96a;
 
   /* ── Ink ── */
-  --color-ink: #0f172a; /* 16.87:1 */
-  --color-ink-soft: #3d4c44; /*  8.57:1 */
-  --color-ink-faint: #5d6f65; /*  5.05:1 */
+  --color-ink: #f7f1e6; /* 17.23:1 */
+  --color-ink-soft: #d3c8b6; /* 11.72:1 */
+  --color-ink-faint: #a39682; /*  6.68:1 */
 
-  /* ── Deep naturals, for silhouettes and photo mounts ── */
-  --color-canopy: #0b3b25; /* parallax foliage */
-  --color-mat: #0d1410; /* dark mount behind photos */
+  /* Dark mount behind photographs, spectrograms and heatmaps. */
+  --color-mat: #070504;
 
   /* ── Confidence — the one scale that carries meaning, not decoration ── */
-  --color-high: #047857;
-  --color-moderate: #b45309;
-  --color-low: #be123c;
-  --color-reject: #be123c;
-  /* Same flipping-foreground problem as on-accent: dark mode's rose is light
-     enough that white text on it measures 3.67:1. */
-  --color-on-reject: #ffffff;
+  --color-high: #5fd39a;
+  --color-moderate: #f2a65a;
+  --color-low: #f47c86;
+  --color-reject: #ef5b6a;
+  --color-on-reject: #2b0710;
 
-  --font-display: 'Lora', Georgia, serif;
-  --font-sans: 'Raleway', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+  --font-sans: 'Figtree', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Organic shape language: generous, slightly irregular corners. */
-  --radius-card: 1.25rem;
-  --radius-organic: 1.75rem 1rem 1.75rem 1rem;
+  /* Hierarchy in the corners: photographs are the softest thing on the page,
+     working surfaces are crisper, controls are pills. */
+  --radius-card: 1.125rem;
+  --radius-photo: 1.75rem;
   --radius-pill: 999px;
 
-  /* On light, depth comes from shadow rather than from borders. */
-  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -10px rgba(15, 23, 42, 0.1);
-  --shadow-lift: 0 2px 4px rgba(15, 23, 42, 0.05), 0 18px 40px -16px rgba(15, 23, 42, 0.18);
-
-  /* Four stops on a roughly geometric progression. A real soft shadow is not one
-     blur — it is a tight dark contact edge under the object fading into a wide
-     faint pool, and approximating that with a single stop is most of why flat UI
-     shadows look pasted on. Reserved for the lifted state; --shadow-soft stays
-     the resting one. */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -14px rgba(0, 0, 0, 0.65);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.4), 0 24px 48px -18px rgba(0, 0, 0, 0.75);
   --shadow-ambient:
-    0 1px 1px rgba(15, 23, 42, 0.035), 0 2px 4px rgba(15, 23, 42, 0.035),
-    0 8px 16px -6px rgba(15, 23, 42, 0.06), 0 24px 48px -18px rgba(15, 23, 42, 0.14);
+    0 1px 1px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 8px 16px -6px rgba(0, 0, 0, 0.45), 0 28px 56px -20px rgba(0, 0, 0, 0.75);
+  --shadow-inner-light: inset 0 1px 0 rgba(255, 240, 215, 0.05);
 
-  /* The highlight a raised surface catches from the sky above it. Delivered as an
-     inset shadow rather than a ::before, so `card` never needs `position:
-     relative` — several call sites are plain divs in flow and giving them a
-     stacking context would be a needless blast radius. */
-  --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.62);
-
-  /* ── Paper grain ──
-     Two tiles, because one is a film-grain plugin and two is paper: a fine tile
-     for photographic grain and a coarse one for fibre and mottle.
-
-     Rasterised once, as an image decode, then composited by the GPU as a plain
-     repeating bitmap — no per-frame cost, no JS, no request, and present before
-     first paint. A live feTurbulence filter on a fixed full-viewport element is a
-     known scroll-performance hazard, and a WebGL shader would mean a second
-     permanent GL context running a full-screen fragment pass forever for an
-     effect that never moves.
-
-     Two attributes are load-bearing. Without stitchTiles the tile seams are
-     plainly visible; without the saturate-0 matrix feTurbulence emits RGB noise,
-     which is coloured confetti rather than grain. */
+  /* Film grain, only over photographs. Rasterised once as an image; no filter
+     runs per frame. stitchTiles hides the seams, saturate-0 keeps it grey. */
   --grain-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
-  --grain-coarse: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.24' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23m)'/%3E%3C/svg%3E");
-
-  /* Cards blend their grain with background-blend-mode, which — unlike the page
-     layer — has no opacity to turn down. So the attenuation is baked into the
-     tile: feComponentTransfer compresses the noise from [0,1] into [0.34,0.66],
-     and soft-light against a value that near mid-grey is close to identity.
-     Same effect as a low opacity, achieved where a knob actually exists. */
-  --grain-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.32' intercept='0.34'/%3E%3CfeFuncG type='linear' slope='0.32' intercept='0.34'/%3E%3CfeFuncB type='linear' slope='0.32' intercept='0.34'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23c)'/%3E%3C/svg%3E");
-
-  /* Kept in step with GRAIN_ALPHA in components/nature/atmosphere.js, which
-     scripts/contrast.mjs measures against a 6% luminance budget. */
-  --grain-opacity: 0.055;
-
-  /* ── Forest band alphas ──
-     Per theme, because the same alpha is not the same effect in both. In light,
-     foliage is darker than the page and low-alpha silhouettes sit back politely.
-     In dark, --color-canopy inverts to a *lighter* green than the ground, and
-     light-on-dark at matched alpha reads far more strongly — at these light
-     values the dark theme had a forest crowding the text. Roughly halved there.
-
-     Depth is carried by DEPTH_MIX in atmosphere.js, not by these; they are
-     near-equal on purpose. scripts/contrast.mjs holds them to a regression
-     against the canopy that shipped before. */
-  --band-ridge: 0.11;
-  --band-trees: 0.11;
-  --band-near: 0.075;
-  --band-fringe: 0.07;
-
-  /* ── Dawn warmth ──
-     How much --color-sun bleeds into the sky near the horizon, and how strong
-     the sun's own glow is. Per theme for the same reason the bands are: dark
-     mode's sun is a saturated yellow, and yellow mixed into near-black is brown.
-     At the light values the dark theme had a band of mud along the bottom. */
-  --sky-warm-mid: 1.5%;
-  --sky-warm-low: 3%;
-  --sun-glow: 9%;
-  --shaft-strength: 13%;
-
-  /* Ceiling on the hero bird's drop shadow. Faint: there is no ground plane
-     under it, only the page, so this reads as the shadow it would cast on the
-     canopy far below rather than as a hard contact shadow. */
-  --bird-shadow-max: 0.1;
+  --grain-opacity: 0.08;
 
   /* ── Type scale ──
-     Named by role rather than size, so the views ask for what a thing *is*.
-     Lora needs materially less negative tracking than Raleway at the same size,
-     which is why --text-display (the serif h1) is tuned tighter than the sans
-     headings below it. */
+     Named by role, so the views ask for what a thing *is*. The two large steps
+     are Bricolage's: it wants tight tracking at size and loose at text size,
+     which its optical-size axis handles for us. */
   --text-micro: 0.6875rem;
   --text-micro--line-height: 1.45;
-  --text-micro--letter-spacing: 0.09em;
-  --text-caption: 0.78125rem;
+  --text-micro--letter-spacing: 0.02em;
+  --text-caption: 0.8125rem;
   --text-caption--line-height: 1.5;
   --text-body: 0.9375rem;
   --text-body--line-height: 1.62;
-  --text-lede: 1.0625rem;
+  --text-lede: 1.125rem;
   --text-lede--line-height: 1.55;
   --text-heading: 1.375rem;
   --text-heading--line-height: 1.25;
-  --text-heading--letter-spacing: -0.012em;
+  --text-heading--letter-spacing: -0.015em;
   --text-title: 1.875rem;
-  --text-title--line-height: 1.15;
-  --text-title--letter-spacing: -0.018em;
-  --text-display: clamp(2.25rem, 1.6rem + 2.4vw, 3.35rem);
-  --text-display--line-height: 1.02;
-  --text-display--letter-spacing: -0.028em;
+  --text-title--line-height: 1.12;
+  --text-title--letter-spacing: -0.025em;
+  --text-display: clamp(2.5rem, 1.6rem + 3.4vw, 4.75rem);
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.035em;
+  --text-hero: clamp(3.25rem, 1.4rem + 6.4vw, 8.25rem);
+  --text-hero--line-height: 0.9;
+  --text-hero--letter-spacing: -0.045em;
 }
 
-/* ── Dark: a forest at night ──────────────────────────────────
-   Redefining the same custom properties is enough — every Tailwind utility
-   resolves through var(), so the whole app follows. Declared three times so all
-   three states work: system-dark (no attribute), explicit dark, explicit light.
+/* ── Light: warm paper ─────────────────────────────────────
+   Only reached by the toggle. Redefining the same custom properties is enough:
+   every utility resolves through var(), so the whole app follows. */
+:root[data-theme='light'] {
+  --color-base: #f5f1ea;
+  --color-surface: #fffdf9;
+  --color-raised: #ede6da;
+  --color-void: #e6ddcf;
+  --color-line: #ddd2c1;
 
-   One caveat worth knowing: Tailwind compiles `/opacity` modifiers to a static
-   hex fallback plus a color-mix() declaration. The fallback is baked from the
-   light value, but color-mix wins in every browser that supports it, which is
-   all current ones. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --color-base: #0d1410;
-    --color-surface: #141d17;
-    --color-raised: #1b271f;
-    --color-void: #080d0a;
-    --color-line: #27352b;
+  --color-accent: #8a5a0b;
+  --color-on-accent: #ffffff;
+  --color-accent-hover: #744b08;
+  --color-accent-bright: #b7791f;
+  --color-accent-dim: #d9b877;
 
-    --color-accent: #4ade80;
-    --color-on-accent: #06130c;
-    --color-accent-hover: #22c55e;
-    --color-accent-bright: #86efac;
-    --color-accent-dim: #2f6b47;
+  --color-sun: #b7791f;
+  --color-sun-ink: #8a5a0b;
 
-    --color-sun: #fbbf24;
-    --color-sun-ink: #fcd34d;
+  --color-ink: #1b150f;
+  --color-ink-soft: #4a3f33;
+  --color-ink-faint: #6b5e4e;
 
-    --color-ink: #e8f0e9;
-    --color-ink-soft: #a8bcae;
-    /* Was #6b6577 at 3.39:1 — a real contrast failure, now 5.29:1. */
-    --color-ink-faint: #82998a;
+  --color-mat: #16120d;
 
-    /* Lighter than the ground, unlike in light mode: these are silhouettes drawn
-       at 7-10% opacity, and BirdFlock strokes its birds with this token. Darker
-       than the background made both invisible. Moonlit foliage, not shadow. */
-    --color-canopy: #7fb99a;
-    --color-mat: #050a07;
+  --color-high: #047857;
+  --color-moderate: #a3530a;
+  --color-low: #be123c;
+  --color-reject: #be123c;
+  --color-on-reject: #ffffff;
 
-    --color-high: #34d399;
-    --color-moderate: #fbbf24;
-    --color-low: #fb7185;
-    --color-reject: #f43f5e;
-    --color-on-reject: #2b0710;
-
-    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
-    --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -16px rgba(0, 0, 0, 0.7);
-    --shadow-ambient:
-      0 1px 1px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.3),
-      0 8px 16px -6px rgba(0, 0, 0, 0.45), 0 24px 48px -18px rgba(0, 0, 0, 0.7);
-    /* A dark surface catches far less sky, so the top highlight nearly vanishes;
-       at the light value it reads as a seam rather than a lit edge. */
-    --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.045);
-
-    /* Soft-light barely registers against near-black, so dark needs more grain
-       to land at the same perceived texture. Still inside the 6% budget. */
-    --grain-opacity: 0.085;
-
-    --band-ridge: 0.055;
-    --band-trees: 0.055;
-    --band-near: 0.038;
-    --band-fringe: 0.034;
-
-    --sky-warm-mid: 0.5%;
-    --sky-warm-low: 1.2%;
-    --sun-glow: 4%;
-    --shaft-strength: 4%;
-  --bird-shadow-max: 0.05;
-    --bird-shadow-max: 0.05;
-  }
-}
-
-:root[data-theme='dark'] {
-  --color-base: #0d1410;
-  --color-surface: #141d17;
-  --color-raised: #1b271f;
-  --color-void: #080d0a;
-  --color-line: #27352b;
-
-  --color-accent: #4ade80;
-  --color-on-accent: #06130c;
-  --color-accent-hover: #22c55e;
-  --color-accent-bright: #86efac;
-  --color-accent-dim: #2f6b47;
-
-  --color-sun: #fbbf24;
-  --color-sun-ink: #fcd34d;
-
-  --color-ink: #e8f0e9;
-  --color-ink-soft: #a8bcae;
-  --color-ink-faint: #82998a;
-
-  --color-canopy: #7fb99a;
-  --color-mat: #050a07;
-
-  --color-high: #34d399;
-  --color-moderate: #fbbf24;
-  --color-low: #fb7185;
-  --color-reject: #f43f5e;
-  --color-on-reject: #2b0710;
-
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -10px rgba(0, 0, 0, 0.6);
-  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -16px rgba(0, 0, 0, 0.7);
+  --shadow-soft: 0 1px 2px rgba(40, 28, 12, 0.05), 0 12px 28px -14px rgba(40, 28, 12, 0.16);
+  --shadow-lift: 0 2px 4px rgba(40, 28, 12, 0.06), 0 22px 44px -18px rgba(40, 28, 12, 0.24);
   --shadow-ambient:
-    0 1px 1px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.3),
-    0 8px 16px -6px rgba(0, 0, 0, 0.45), 0 24px 48px -18px rgba(0, 0, 0, 0.7);
-  --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    0 1px 1px rgba(40, 28, 12, 0.035), 0 2px 4px rgba(40, 28, 12, 0.035),
+    0 8px 16px -6px rgba(40, 28, 12, 0.07), 0 24px 48px -18px rgba(40, 28, 12, 0.18);
+  --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 
-  --grain-opacity: 0.085;
-
-  --band-ridge: 0.055;
-  --band-trees: 0.055;
-  --band-near: 0.038;
-  --band-fringe: 0.034;
-
-  --sky-warm-mid: 0.5%;
-  --sky-warm-low: 1.2%;
-  --sun-glow: 4%;
-  --shaft-strength: 4%;
-  --bird-shadow-max: 0.05;
+  --grain-opacity: 0.06;
 }
 
-/* Let form controls, scrollbars and the caret follow the theme natively. */
+/* Form controls, scrollbars and the caret follow the theme natively. */
 :root {
-  color-scheme: light;
-}
-:root[data-theme='dark'] {
   color-scheme: dark;
+  /* Width of the desktop side rail; the page content is offset by it. */
+  --rail: 6rem;
+  /* Height of the fixed top nav. */
+  --nav-h: 4.75rem;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-  }
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 html {
   scroll-behavior: smooth;
+  /* Anchor jumps land below the sticky nav rather than under it. */
+  scroll-padding-top: var(--nav-h);
 }
 
 body {
@@ -322,6 +186,12 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 40%, transparent);
+  color: var(--color-ink);
 }
 
 /* Keyboard users must always be able to see where they are. */
@@ -339,93 +209,77 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 30%, transparent);
   border-radius: 99px;
   border: 3px solid var(--color-base);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 50%, transparent);
 }
 
 /* ── Reusable primitives ─────────────────────────────────── */
 
-/* The page ground, textured. Sits inside the ambient wrapper, which carries
-   `isolation: isolate` so this blend can never reach the content layer above it.
-   Grain belongs in backgrounds, never over text. */
+/* Film grain over photographs. The caller supplies `isolation: isolate` on the
+   photo's container so the blend composites against the image and stops there —
+   grain is never allowed over live text. */
 @utility grain {
-  background-image: var(--grain-fine), var(--grain-coarse);
-  /* Explicit, in CSS pixels: without it the tile is resampled at DPR 2 and 3,
-     which both softens the grain and makes the stitched seams reappear. */
-  background-size: 180px 180px, 420px 420px;
-  background-repeat: repeat, repeat;
+  background-image: var(--grain-fine);
+  background-size: 180px 180px;
+  background-repeat: repeat;
   opacity: var(--grain-opacity);
-  /* soft-light rather than overlay: it lightens and darkens symmetrically, so
-     the same tile works on mint paper and on a forest night. */
   mix-blend-mode: soft-light;
 }
 
 @utility card {
-  /* background-blend-mode rather than mix-blend-mode: this blends the grain into
-     the card's *own* background colour and cannot affect child content, so glyph
-     legibility is untouched. Cards need the texture too — otherwise the page
-     reads as a textured background carrying sterile white boxes. */
   background-color: var(--color-surface);
-  background-image: var(--grain-card);
-  background-size: 180px 180px;
-  background-blend-mode: soft-light;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-soft), var(--shadow-inner-light);
 }
 
-/* Deliberately separate from `card`, not folded into it. DeckView sets its own
-   `transition-[transform,box-shadow,border-color]` on the same elements; two
-   `transition` declarations in the utilities layer resolve by source order,
-   which is not something to leave to chance across 34 call sites. */
-@utility card-interactive {
-  transition:
-    box-shadow 260ms var(--ease-out-soft),
-    border-color 260ms var(--ease-out-soft),
-    transform 260ms var(--ease-out-soft);
-}
-
-/* The lifted state: the four-stop shadow, for hover and focus. */
-@utility card-lift {
-  box-shadow: var(--shadow-ambient), var(--shadow-inner-light);
-}
-
-/* Glass, for panels that float over the animated background. */
+/* Glass, for controls that float over photographs and over scrolling content. */
 @utility card-glass {
-  background-color: color-mix(in oklab, var(--color-surface) 82%, transparent);
-  background-image: var(--grain-card);
-  background-size: 180px 180px;
-  background-blend-mode: soft-light;
-  border: 1px solid var(--color-line);
+  background-color: color-mix(in oklab, var(--color-surface) 78%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-line) 80%, transparent);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-soft), var(--shadow-inner-light);
-  backdrop-filter: blur(14px) saturate(1.1);
-  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
-@utility hairline {
-  border-color: var(--color-line);
+/* A patch of the page that is always night, whatever the theme: the side rail,
+   the hero and the footer. Redeclares the dark tokens locally so every utility
+   inside resolves dark. These values must match @theme exactly — the contrast
+   script asserts it. */
+@utility scope-night {
+  --color-base: #100d0a;
+  --color-surface: #1a1511;
+  --color-raised: #241d17;
+  --color-line: #3a3027;
+  --color-accent: #e8a92a;
+  --color-on-accent: #1a1204;
+  --color-accent-hover: #f2bd4f;
+  --color-ink: #f7f1e6;
+  --color-ink-soft: #d3c8b6;
+  --color-ink-faint: #a39682;
+  color-scheme: dark;
+  color: var(--color-ink);
 }
 
-/* A dark mount behind photographs, spectrograms and heatmaps.
-   Print field guides mount plates on dark card for exactly this reason: it
-   stops a bright page from washing out the subject. It is also what keeps a
-   light UI viable for an app that is mostly photographs. */
-@utility mat {
-  background: var(--color-mat);
-  border-radius: calc(var(--radius-card) - 0.35rem);
-  overflow: hidden;
+/* Glass that sits on a photograph regardless of theme: the hero is always a
+   dark picture, so its controls are always light-on-dark. */
+@utility glass-photo {
+  background-color: rgba(16, 13, 10, 0.42);
+  border: 1px solid rgba(255, 244, 225, 0.16);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
 }
 
 /* The sentence currently being spoken by the narrator. Deliberately subtle:
    it tracks along while you read, it does not shout. */
 @utility speaking {
-  background: color-mix(in oklab, var(--color-sun) 30%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-sun) 14%, transparent);
+  background: color-mix(in oklab, var(--color-sun) 28%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-sun) 12%, transparent);
   border-radius: 3px;
 }
 
@@ -435,7 +289,7 @@ body {
 @utility holo {
   background-image: radial-gradient(
     circle at var(--mx, 50%) var(--my, 50%),
-    color-mix(in oklab, var(--color-sun) 55%, transparent),
+    color-mix(in oklab, var(--color-sun) 50%, transparent),
     transparent 60%
   );
 }
@@ -451,15 +305,14 @@ body {
       115deg,
       transparent 20%,
       color-mix(in oklab, var(--color-sun) 45%, transparent) 38%,
-      color-mix(in oklab, #22d3ee 40%, transparent) 50%,
-      color-mix(in oklab, #a855f7 40%, transparent) 62%,
+      color-mix(in oklab, #38bdf8 38%, transparent) 50%,
+      color-mix(in oklab, #e879f9 34%, transparent) 62%,
       transparent 80%
     );
 }
 
-/* Respect the OS setting. Everything animated in this app is decoration; no
-   information is lost when it stops moving. The canvas and WebGL layers check
-   this in JS as well and render a single static frame instead of a loop. */
+/* Respect the OS setting. Everything animated here is decoration; no
+   information is lost when it stops moving. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -471,17 +324,14 @@ body {
   }
 }
 
-/* Someone who has asked the OS for more contrast has asked for exactly the thing
-   texture takes away. Zeroing the token removes the grain everywhere at once —
-   the page ground, the cards and the glass — because they all read it. */
+/* Someone who has asked for more contrast has asked for exactly what texture
+   takes away. */
 @media (prefers-contrast: more) {
   :root {
     --grain-opacity: 0;
   }
 }
 
-/* Grain is a screen effect. On paper it is at best invisible and at worst a
-   sheet of grey ink. */
 @media print {
   .grain {
     display: none;

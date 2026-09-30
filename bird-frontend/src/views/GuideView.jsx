@@ -149,8 +149,8 @@ export function GuideView({ focusFolder, speech }) {
       {comparison && <ComparisonTable comparison={comparison} speech={speech} onClose={() => setComparison(null)} />}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        {/* ── Grid ── */}
-        <div className="min-w-0">
+        {/* ── Grid ── scrolls within itself, so 200 species don't make the page endless */}
+        <div className="min-w-0 max-h-[70svh] overflow-y-auto pr-1 [scrollbar-gutter:stable] lg:max-h-[46rem]">
           {filtered.length === 0 ? (
             <div className="card">
               <EmptyState icon={Search} title="Nothing matches">
@@ -368,13 +368,13 @@ function ComparisonTable({ comparison, speech, onClose }) {
         <table className="w-full min-w-[520px] text-sm">
           <thead>
             <tr className="border-b border-(--color-line) text-left">
-              <th className="px-5 py-2.5 text-[0.68rem] font-semibold tracking-wider text-(--color-ink-faint) uppercase">
+              <th className="px-5 py-2.5 text-caption font-semibold text-(--color-ink-faint)">
                 Field
               </th>
-              <th className="px-5 py-2.5 text-[0.68rem] font-semibold tracking-wider text-(--color-ink-faint) uppercase">
+              <th className="px-5 py-2.5 text-caption font-semibold text-(--color-ink-faint)">
                 {comparison.a.display_name}
               </th>
-              <th className="px-5 py-2.5 text-[0.68rem] font-semibold tracking-wider text-(--color-ink-faint) uppercase">
+              <th className="px-5 py-2.5 text-caption font-semibold text-(--color-ink-faint)">
                 {comparison.b.display_name}
               </th>
             </tr>

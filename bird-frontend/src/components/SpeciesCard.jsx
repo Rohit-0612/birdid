@@ -397,7 +397,7 @@ function Fact({ icon: Icon, label, value }) {
     <div className="flex gap-3">
       <Icon size={15} strokeWidth={2} className="mt-0.5 shrink-0 text-(--color-ink-faint)" />
       <div className="min-w-0">
-        <div className="text-[0.68rem] tracking-wider text-(--color-ink-faint) uppercase">{label}</div>
+        <div className="text-caption text-(--color-ink-faint)">{label}</div>
         <p className="mt-0.5 text-sm leading-relaxed text-(--color-ink-soft)">{value}</p>
       </div>
     </div>
