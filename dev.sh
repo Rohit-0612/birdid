@@ -13,6 +13,15 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Local secrets (GROQ_API_KEY and friends) live in a git-ignored .env. Exported
+# so the API process inherits them; absent file, nothing happens.
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$PROJECT_DIR/.env"
+    set +a
+fi
 PYTHON="${PYTHON:-python3}"
 API_PORT=8000
 WEB_PORT=5173
