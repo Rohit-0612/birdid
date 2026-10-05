@@ -203,3 +203,59 @@ def test_the_deck_and_the_sighting_log_are_independent():
         sightings.deck_register(result())
     assert len(sightings.deck_list()["cub"]) == 1
     assert sightings.list_all()["total"] == 3
+
+
+# ── The answer shown to the user ─────────────────────────────
+# resolve_answer() reuses deck_key_for(), so the headline on screen and the card
+# filed in the deck must name the same bird in every branch.
+
+def test_answer_is_the_classifier_when_it_is_trusted():
+    a = sightings.resolve_answer(result(confidence=0.91), None)
+    assert a["status"] == "identified" and a["identified_by"] == "cub"
+    assert a["display_name"] == "Blue Jay" and a["folder"] == "073.Blue_Jay"
+    assert a["confidence"] == 0.91 and a["band"] == "high"
+
+
+def test_answer_is_the_verifiers_correction_into_the_200():
+    a = sightings.resolve_answer(result(confidence=0.2),
+                                 verification("American Crow", "Corvus brachyrhynchos",
+                                              cub_folder="029.American_Crow"))
+    assert a["identified_by"] == "verifier" and a["band"] == "confirmed"
+    assert a["display_name"] == "American Crow" and a["folder"] == "029.American_Crow"
+    assert a["source"] == "cub" and a["confidence"] is None
+
+
+def test_answer_names_a_bird_outside_the_200_not_the_classifiers_guess():
+    """The Barn Owl case: the classifier says Northern Fulmar at 9%, the verifier
+    says Barn Owl — the user must see Barn Owl, with no percentage."""
+    a = sightings.resolve_answer(result("091.Northern_Fulmar", "Northern Fulmar",
+                                        confidence=0.09, is_bird=False),
+                                 verification("Barn Owl", "Tyto alba"))
+    assert a["display_name"] == "Barn Owl" and a["scientific_name"] == "Tyto alba"
+    assert a["source"] == "external" and a["folder"] is None
+    assert a["band"] == "confirmed" and a["confidence"] is None
+    assert a["best_guess"] is None
+
+
+def test_answer_is_unsure_when_neither_model_commits():
+    a = sightings.resolve_answer(result(confidence=0.3),
+                                 verification(confident=False))
+    assert a["status"] == "unsure" and a["display_name"] is None
+    assert a["best_guess"] == "Blue Jay"
+    assert "verifier could not name it" in a["reason"]
+
+
+@pytest.mark.parametrize("res,ver", [
+    (result(confidence=0.91), None),
+    (result(confidence=0.2), verification(cub_folder="029.American_Crow")),
+    (result(confidence=0.1, is_bird=False), verification()),
+    (result(confidence=0.3), verification(confident=False)),
+])
+def test_the_answer_and_the_deck_card_always_agree(res, ver):
+    key, source, fields = sightings.deck_key_for(res, ver)
+    a = sightings.resolve_answer(res, ver)
+    if key is None:
+        assert a["status"] == "unsure"
+    else:
+        assert a["display_name"] == fields["display_name"]
+        assert a["source"] == source

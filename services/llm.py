@@ -434,6 +434,10 @@ def narrate(result, model=None):
     report aloud produces "SPECIES colon Blue Jay, FIELD MARKS colon bullet…";
     a written paragraph sounds like a person who knows birds.
     """
+    answer = result.get("answer") or {}
+    if answer.get("identified_by") == "verifier" and answer.get("display_name"):
+        return _narrate_verified(answer, model)
+
     info = result.get("info") or {}
     species = result.get("species") or {}
     name = species.get("display_name") or species.get("common_name") or "this bird"
@@ -464,6 +468,39 @@ def narrate(result, model=None):
                 "kb_source": (result.get("provenance") or {}).get("kb_source")}
     except Exception as e:
         return {"text": fallback, "generated": False,
+                "reason": f"{type(e).__name__}: {e}"}
+
+
+def _narrate_verified(answer, model=None):
+    """Narrate the bird the open-vocabulary verifier named.
+
+    The classifier's guess is wrong in this case by definition, so none of its
+    fields are used — no percentage either, since the verifier's similarity is
+    not a probability. A species inside the 200 still gets its knowledge-base
+    notes; one outside has none, and the narration says so plainly rather than
+    letting the model recall facts it cannot be checked against.
+    """
+    name = answer["display_name"]
+    sci = answer.get("scientific_name")
+    info = answer.get("info") or {}
+    named = f"{name}, {sci}" if sci else name
+
+    if not info:
+        return {"text": (f"This is a {named}, confirmed by a second identification model. "
+                         "It is outside the two hundred species in my field guide, so I "
+                         "do not have notes on it yet."),
+                "generated": False, "reason": "outside the knowledge base"}
+
+    fallback = (f"This is a {named}, confirmed by a second identification model. "
+                + _template_narration(info, name, None, None).split(".", 1)[-1].strip())
+    try:
+        text = _chat(NARRATION_SYSTEM, _facts(info, name), model)
+        if not text:
+            raise LLMUnavailable("empty response")
+        return {"text": text, "generated": True,
+                "model": getattr(text, "model", None) or model or DEFAULT_MODEL}
+    except Exception as e:
+        return {"text": fallback.strip(), "generated": False,
                 "reason": f"{type(e).__name__}: {e}"}
 
 

@@ -303,6 +303,54 @@ def deck_key_for(result, verification=None, trust_confidence=TRUST_CONFIDENCE):
                         f"{trust_confidence:.0%} bar and the verifier could not name it")
 
 
+def resolve_answer(result, verification=None, trust_confidence=TRUST_CONFIDENCE):
+    """The one answer to show the user, decided exactly as the deck decides.
+
+    The classifier and the verifier both report on every photo that needs a
+    second look, and the deck already picks between them. This reuses that pick,
+    so the headline on screen and the card in the deck can never disagree.
+
+    `band` is the classifier's confidence band when it answered, "confirmed" when
+    the verifier did (its similarity is not a probability, so no percentage is
+    implied), and None when neither model would commit — `status` is then
+    "unsure" and the classifier's pick is offered only as a guess.
+    """
+    key, source, fields = deck_key_for(result, verification, trust_confidence)
+    species = result.get("species") or {}
+
+    if key is None:
+        return {
+            "status": "unsure",
+            "identified_by": None,
+            "display_name": None,
+            "scientific_name": None,
+            "family": None,
+            "order": None,
+            "folder": None,
+            "source": None,
+            "confidence": None,
+            "band": None,
+            "reason": fields,
+            "best_guess": species.get("display_name"),
+        }
+
+    by_classifier = fields["identified_by"] == "cub"
+    return {
+        "status": "identified",
+        "identified_by": fields["identified_by"],
+        "display_name": fields["display_name"],
+        "scientific_name": fields["scientific_name"],
+        "family": fields["family"],
+        "order": fields["order"],
+        "folder": key if source == "cub" else None,
+        "source": source,
+        "confidence": result.get("confidence") if by_classifier else None,
+        "band": result.get("confidence_band") if by_classifier else "confirmed",
+        "reason": None,
+        "best_guess": None,
+    }
+
+
 def deck_register(result, verification=None, thumb=None, force=False):
     """Add or update this species' card. Returns {entry, created, reason}.
 
