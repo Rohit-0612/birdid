@@ -12,7 +12,7 @@ import * as api from '../lib/api'
  * voice, and only then: a typed question gets a typed answer, because having the
  * app start talking because you used the keyboard is startling.
  */
-export function ChatPanel({ folder, speech, pendingQuestion, onConsumePending, onClose }) {
+export function ChatPanel({ folder, subject, speech, pendingQuestion, onConsumePending, onClose }) {
   const [turns, setTurns] = useState([])
   const [draft, setDraft] = useState('')
   const [streaming, setStreaming] = useState(false)
@@ -59,7 +59,7 @@ export function ChatPanel({ folder, speech, pendingQuestion, onConsumePending, o
     }
 
     try {
-      await api.chatStream(text, { folder, history, signal: controller.signal }, (event) => {
+      await api.chatStream(text, { folder, subject, history, signal: controller.signal }, (event) => {
         if (event.type === 'grounding') setGrounding(event.folders ?? [])
         else if (event.type === 'token') append(event.text)
         else if (event.type === 'error') append(event.text)
@@ -69,7 +69,7 @@ export function ChatPanel({ folder, speech, pendingQuestion, onConsumePending, o
         // Streaming failed outright — fall back to the non-streaming endpoint so
         // the question still gets an answer.
         try {
-          const payload = await api.chat(text, { folder, history })
+          const payload = await api.chat(text, { folder, subject, history })
           append(payload.text)
         } catch (fallbackErr) {
           append(`I could not reach the assistant. ${fallbackErr.message}`)
