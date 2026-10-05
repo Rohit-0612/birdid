@@ -5,6 +5,7 @@ import { Dropzone } from '../components/Dropzone'
 import { ChatPanel } from '../components/ChatPanel'
 import { SpeciesCard, SpeciesCardSkeleton } from '../components/SpeciesCard'
 import { EmptyState } from '../components/primitives'
+import { answerOf, answerSubject } from '../lib/answer'
 import * as api from '../lib/api'
 
 /**
@@ -14,7 +15,7 @@ import * as api from '../lib/api'
  * identification — it costs a second backward pass and most identifications are
  * never inspected that closely.
  */
-export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
+export function IdentifyView({ speech, registerVoiceHandler }) {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [result, setResult] = useState(null)
@@ -109,26 +110,33 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
       } else if (intent === 'save') {
         // Birds register themselves now, so a spoken "save this" only has work to
         // do when the automatic routing declined to guess.
-        if (result?.deck?.entry) {
-          speech.speak(`${result.species.display_name} is already in your deck.`)
+        const entry = result?.deck?.entry
+        if (entry) {
+          speech.speak(
+            `${entry.display_name} is ${result.deck.created ? 'now' : 'already'} in your deck.`,
+          )
         } else if (result) {
           forceAdd()
         }
       } else if (intent === 'fieldMarks') {
-        const marks = result?.info?.field_marks
+        const answer = answerOf(result)
+        const marks = answer?.info?.field_marks
         speech.speak(
           marks?.length
-            ? `Look for these field marks on the ${result.species.display_name}. ${marks.join(' ')}`
+            ? `Look for these field marks on the ${answer.display_name}. ${marks.join(' ')}`
             : 'I have no field marks for this bird.',
         )
       } else if (intent === 'narrate') {
         if (!result) {
           speech.speak('Identify a bird first, then I can tell you about it.')
         } else {
+          const name = answerOf(result)?.display_name
           api
             .narrate(result)
             .then((payload) => speech.speak(payload.text))
-            .catch(() => speech.speak(`This looks like a ${result.species.display_name}.`))
+            .catch(() =>
+              speech.speak(name ? `This is a ${name}.` : 'I am not sure which bird this is.'),
+            )
         }
       } else if (intent === 'ask') {
         setChatOpen(true)
@@ -170,7 +178,6 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
             onForceAdd={forceAdd}
             forcing={forcing}
             onAsk={() => setChatOpen(true)}
-            onPickSpecies={(folder) => onGoto?.('guide', { folder })}
           />
         )}
 
@@ -189,7 +196,8 @@ export function IdentifyView({ speech, registerVoiceHandler, onGoto }) {
       <aside className="min-w-0">
         {chatOpen || pendingQuestion ? (
           <ChatPanel
-            folder={result?.species?.folder}
+            folder={answerOf(result)?.folder ?? null}
+            subject={answerSubject(answerOf(result))}
             speech={speech}
             pendingQuestion={pendingQuestion}
             onConsumePending={() => setPendingQuestion(null)}

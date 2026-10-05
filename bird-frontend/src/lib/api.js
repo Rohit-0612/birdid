@@ -69,11 +69,11 @@ export const narrate = (result) =>
     body: JSON.stringify({ result }),
   }).then(json)
 
-export const chat = (question, { folder = null, history = [] } = {}) =>
+export const chat = (question, { folder = null, subject = null, history = [] } = {}) =>
   fetch('/api/chat', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ question, folder, history }),
+    body: JSON.stringify({ question, folder, subject, history }),
   }).then(json)
 
 /**
@@ -83,11 +83,11 @@ export const chat = (question, { folder = null, history = [] } = {}) =>
  * cannot POST, and the question, the on-screen species and the history all need
  * to go in a body. `onEvent` receives each parsed event as it arrives.
  */
-export async function chatStream(question, { folder = null, history = [], signal } = {}, onEvent) {
+export async function chatStream(question, { folder = null, subject = null, history = [], signal } = {}, onEvent) {
   const res = await fetch('/api/chat/stream', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ question, folder, history }),
+    body: JSON.stringify({ question, folder, subject, history }),
     signal,
   })
   if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`)
