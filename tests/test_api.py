@@ -384,7 +384,58 @@ def test_low_confidence_triggers_verification_and_files_a_new_bird(client, stub_
     entry = body["deck"]["entry"]
     assert entry["source"] == "external"
     assert entry["display_name"] == "Scarlet Macaw"
+    # The answer shown to the user is the verifier's bird, not the classifier's guess.
+    answer = body["answer"]
+    assert answer["display_name"] == "Scarlet Macaw"
+    assert answer["identified_by"] == "verifier" and answer["band"] == "confirmed"
+    assert answer["source"] == "external" and answer["info"] == {}
+    assert answer["confidence"] is None
+    # The classifier's own fields are still reported, untouched.
+    assert body["species"]["display_name"] != "Scarlet Macaw"
     client.delete(f"/api/deck/{entry['key']}")
+
+
+def test_a_confident_bird_answers_with_the_classifier(client, bird_bytes, stub_verifier):
+    body = client.post("/api/identify",
+                       files={"image": ("b.jpg", bird_bytes, "image/jpeg")}).json()
+    answer = body["answer"]
+    if body["confidence"] >= api.VERIFY_BELOW_CONFIDENCE and body["openset"]["is_bird"]:
+        assert answer["identified_by"] == "cub"
+        assert answer["display_name"] == body["species"]["display_name"]
+        assert answer["confidence"] == body["confidence"]
+        assert answer["info"] == body["info"]
+
+
+def test_narration_follows_the_verifiers_answer():
+    """A bird outside the 200 is narrated by name, honestly, with no percentage
+    and without the 'not one of the 200 I know' rejection line."""
+    from services import llm
+    result = {
+        "species": {"display_name": "Northern Fulmar"}, "confidence": 0.09,
+        "confidence_band": "low", "info": {"field_marks": ["Tube nose"]},
+        "openset": {"enabled": True, "is_bird": False},
+        "answer": {"identified_by": "verifier", "display_name": "Barn Owl",
+                   "scientific_name": "Tyto alba", "info": {}},
+    }
+    out = llm.narrate(result)
+    assert "Barn Owl" in out["text"] and "Tyto alba" in out["text"]
+    assert "Northern Fulmar" not in out["text"]
+    assert "percent" not in out["text"]
+    assert "two hundred species I know" not in out["text"]
+
+
+def test_chat_names_a_bird_outside_the_knowledge_base(client, monkeypatch):
+    from services import llm
+    seen = {}
+
+    def fake_chat(question, context, **kw):
+        seen["context"] = context
+        return {"text": "ok", "generated": True}
+
+    monkeypatch.setattr(llm, "chat", fake_chat)
+    client.post("/api/chat", json={"question": "what does it eat?",
+                                   "subject": "Barn Owl (Tyto alba)"})
+    assert seen["context"].startswith("Species on screen: Barn Owl (Tyto alba)")
 
 
 def test_a_missing_verifier_degrades_instead_of_500ing(client, monkeypatch):

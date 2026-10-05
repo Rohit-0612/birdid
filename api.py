@@ -204,7 +204,32 @@ async def identify(
     else:
         result["deck"] = None
 
+    result["answer"] = _answer(result)
     return result
+
+
+def _answer(result):
+    """The resolved answer the dashboard shows, with field notes for *that* bird.
+
+    Added alongside the classifier's own fields, never instead of them: callers
+    that read `species`/`confidence` see exactly what they always did.
+    """
+    answer = sightings.resolve_answer(result, result.get("verification"))
+    if answer["identified_by"] == "cub":
+        answer["info"] = result.get("info") or {}
+    elif answer["folder"]:
+        # The verifier corrected the pick into the 200: show the corrected
+        # species' notes, not the ones for the classifier's mistaken guess.
+        try:
+            info = bird_core.species_detail(answer["folder"])
+        except Exception:
+            info = {}
+        answer["info"] = info
+        answer["family"] = answer["family"] or info.get("family")
+        answer["order"] = answer["order"] or info.get("order")
+    else:
+        answer["info"] = {}
+    return answer
 
 
 @app.post("/api/identify/audio")
@@ -333,17 +358,30 @@ async def narrate(payload: dict):
     return llm.narrate(result, model=payload.get("model"))
 
 
-def _chat_context(question, folder=None):
-    """Retrieved context for a question, preferring the species on screen."""
+def _chat_context(question, folder=None, subject=None):
+    """Retrieved context for a question, preferring the species on screen.
+
+    `subject` names a bird on screen that has no knowledge-base record — one the
+    open-vocabulary verifier identified outside the 200. Without it the model
+    would be asked "what does it eat?" with no idea which bird "it" is.
+    """
     folders = []
-    if folder and folder in bird_core.CLASS_NAMES:
+    on_screen = bool(folder and folder in bird_core.CLASS_NAMES)
+    if on_screen:
         folders.append(folder)
     for extra in llm.retrieve(question, bird_core.species_catalogue(),
                               bird_core.SPECIES_KB, limit=3):
         if extra not in folders:
             folders.append(extra)
     folders = folders[:3]
-    return folders, llm.build_context(folders, bird_core.species_detail)
+    context = llm.build_context(folders, bird_core.species_detail)
+    subject = (subject or "").strip()[:160]
+    if subject and not on_screen:
+        note = (f"Species on screen: {subject}. It was identified by an open-vocabulary "
+                f"model and is not in this knowledge base, so any records below are "
+                f"about other species.")
+        context = note + ("\n\n---\n\n" + context if context else "")
+    return folders, context
 
 
 @app.post("/api/chat")
@@ -353,7 +391,7 @@ async def chat(payload: dict):
     if not question:
         raise HTTPException(400, "question is required")
 
-    folders, context = _chat_context(question, payload.get("folder"))
+    folders, context = _chat_context(question, payload.get("folder"), payload.get("subject"))
     answer = llm.chat(question, context, history=payload.get("history"),
                       model=payload.get("model"))
     return {**answer, "grounded_in": folders}
@@ -366,7 +404,7 @@ async def chat_stream(payload: dict):
     if not question:
         raise HTTPException(400, "question is required")
 
-    folders, context = _chat_context(question, payload.get("folder"))
+    folders, context = _chat_context(question, payload.get("folder"), payload.get("subject"))
 
     def events():
         yield f"data: {json.dumps({'type': 'grounding', 'folders': folders})}\n\n"
